@@ -1,0 +1,38 @@
+*{ font-family:sans-serif; }
+body{
+	overflow-y: scroll;
+	background:#333;
+	color:#fff;
+	line-height:1.5;
+}
+h1{
+	padding:0 0 .2em;
+	margin:0;
+}
+img{
+	width:150px;
+	height:150px;
+	float:left;
+	margin:4px;
+	opacity:0;
+	-webkit-transition:opacity 0.5s;
+	-moz-transition:opacity 0.5s;
+	-ms-transition:opacity 0.5s;
+	-o-transition:opacity 0.5s;
+	transition:opacity 0.5s;
+}
+#growl{
+	position:absolute;
+	right:0;
+	top:0;
+}
+#growl div{
+	background:rgba(0,0,0,.4);
+	color:#fff;
+	margin:1px;
+	padding:.1em .3em;
+	position:relative;
+}
+form{
+	padding:0 0 10px;
+}
