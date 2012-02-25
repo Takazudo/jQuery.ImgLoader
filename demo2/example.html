@@ -5,14 +5,14 @@
 <title></title>
 <link rel="stylesheet" href="style.css">
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
-<script src="jquery.imgloader.js"></script>
-<script src="demo.js"></script>
+<script src="../jquery.imgloader.min.js"></script>
+<script src="script.js"></script>
 </head>
 <body>
 <h1>$.ImgLoader</h1>
 <form>
 	<div><label><input type="radio" name="usechain" value="yes" checked> use chainLoader</label>  <label><input type="radio" name="usechain" value="no"> normal loader</label></div>
-	<div class="options"><label>chainsize: <input name="chainsize" type="number" value="3" min="0"></label> <label>delay: <input name="delay" type="number" value="100" min="0"></label> (chainLoader options)</div>
+	<div class="options"><label>pipesize: <input name="pipesize" type="number" value="3" min="0"></label>&nbsp;&nbsp;&nbsp;<label>delay: <input name="delay" type="number" value="100" min="0"></label></div>
 	<div><input type="submit" value="GO"></div>
 </form>
 <div id="imgs"></div>

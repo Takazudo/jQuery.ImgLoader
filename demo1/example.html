@@ -1,0 +1,141 @@
+<!doctype html>
+<html class="no-js" lang="ja">
+<head>
+<meta charset="utf-8">
+<title></title>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
+<script src="../jquery.imgloader.js"></script>
+<style>
+pre{
+  border:1px solid #000;
+  padding:10px;
+  font-family: monospace, serif;
+}
+</style>
+<script>
+function test1(){
+  var loader = $.ImgLoader({
+    srcs: [ '../imgs/1.jpg', '../imgs/2.jpg', '../imgs/3.jpg', '../imgs/4.jpg' ]
+  });
+  loader.bind('itemload', function($img){
+    $('#test1-imgs').append($img);
+  });
+  loader.bind('allload', function($img){
+    alert('everything loaded!');
+  });
+  loader.load();
+}
+function test2(){
+  var loader = $.ImgLoader({
+    srcs: [ '../imgs/1.jpg', '../imgs/2.jpg', '../imgs/3.jpg', '../imgs/4.jpg' ],
+    pipesize: 2,
+    delay: 100 // optional
+  });
+  loader.bind('itemload', function($img){
+    $('#test2-imgs').append($img);
+  });
+  loader.bind('allload', function($img){
+    alert('everything loaded!');
+  });
+  loader.load();
+}
+function test3(){
+  var loader = $.ImgLoader({ pipesize: 2 });
+
+  loader.add('../imgs/1.jpg').then(function($img){
+    $('#test3-imgs').append($img);
+  }, function(){
+    alert('could not load 1.jpg');
+  });
+  loader.add('../imgs/2.jpg').then(function($img){
+    $('#test3-imgs').append($img);
+  }, function(){
+    alert('could not load 2.jpg');
+  });
+
+  loader.load();
+}
+function test4(){
+  var loader = $.ImgLoader({
+    srcs: [ '../imgs/1.jpg', '../imgs/2.jpg', '../imgs/3.jpg', '../imgs/4.jpg' ],
+    pipesize: 2
+  });
+  loader.bind('allload', function($img){
+    alert('everything loaded! but this will not be fired');
+  });
+
+  loader.load();
+  loader.kill(); // stop all!
+  alert('killed');
+}
+$(function(){
+  $('#test1-run').click(test1);
+  $('#test2-run').click(test2);
+  $('#test3-run').click(test3);
+  $('#test4-run').click(test4);
+});
+</script>
+</head>
+<body>
+<h1>$.ImgLoader</h1>
+<h2>test1()</h2>
+<button id="test1-run">run</button>
+<pre>var loader = $.ImgLoader({
+  srcs: [ '../imgs/1.jpg', '../imgs/2.jpg', '../imgs/3.jpg', '../imgs/4.jpg' ]
+});
+loader.bind('itemload', function($img){
+  $('#test1-imgs').append($img);
+});
+loader.bind('allload', function($img){
+  alert('everything loaded!');
+});
+loader.load();</pre>
+<div id="test1-imgs"></div>
+<h2>test2()</h2>
+<button id="test2-run">run</button>
+<pre>var loader = $.ImgLoader({
+  srcs: [ '../imgs/1.jpg', '../imgs/2.jpg', '../imgs/3.jpg', '../imgs/4.jpg' ],
+  pipesize: 2,
+  delay: 100 // optional
+});
+loader.bind('itemload', function($img){
+  $('#test2-imgs').append($img);
+});
+loader.bind('allload', function($img){
+  alert('everything loaded!');
+});
+loader.load();</pre>
+<div id="test2-imgs"></div>
+<h2>test3()</h2>
+<button id="test3-run">run</button>
+<pre>var loader = $.ImgLoader({ pipesize: 2 });
+
+loader.add('../imgs/1.jpg').then(function($img){
+  $('#test3-imgs').append($img);
+}, function(){
+  alert('could not load 1.jpg');
+});
+loader.add('../imgs/2.jpg').then(function($img){
+  $('#test3-imgs').append($img);
+}, function(){
+  alert('could not load 2.jpg');
+});
+
+loader.load();</pre>
+<div id="test3-imgs"></div>
+<h2>test4()</h2>
+<button id="test4-run">run</button>
+<pre>var loader = $.ImgLoader({
+  srcs: [ '../imgs/1.jpg', '../imgs/2.jpg', '../imgs/3.jpg', '../imgs/4.jpg' ],
+  pipesize: 2
+});
+loader.bind('allload', function($img){
+  alert('everything loaded! but this will not be fired');
+});
+
+loader.load();
+loader.kill(); // stop all!
+alert('killed');</pre>
+<div id="test4-imgs"></div>
+</body>
+</html>

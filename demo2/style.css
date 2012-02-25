@@ -1,6 +1,12 @@
 *{ font-family:sans-serif; }
-body{
+html{
 	overflow-y: scroll;
+	padding:0;
+	margin:0;
+}
+body{
+	padding:20px;
+	margin:0;
 	background:#333;
 	color:#fff;
 	line-height:1.5;
@@ -8,6 +14,9 @@ body{
 h1{
 	padding:0 0 .2em;
 	margin:0;
+}
+input[type=number]{
+	width:4em;
 }
 img{
 	width:150px;

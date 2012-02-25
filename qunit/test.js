@@ -11,7 +11,7 @@
     });
   };
 
-  asyncTest('Event bind/trigger', function() {
+  asyncTest('Event - bind/trigger', function() {
     var eventer;
     expect(1);
     eventer = new ns.Event;
@@ -22,7 +22,7 @@
     return eventer.trigger('foo');
   });
 
-  asyncTest('Event bind with args', function() {
+  asyncTest('Event - bind with args', function() {
     var eventer;
     expect(4);
     eventer = new ns.Event;
@@ -36,7 +36,7 @@
     return eventer.trigger('foo', 1, 2, 3);
   });
 
-  asyncTest('Event unbind', function() {
+  asyncTest('Event - unbind', function() {
     var eventer;
     expect(1);
     eventer = new ns.Event;
@@ -51,7 +51,7 @@
     });
   });
 
-  asyncTest('Event one', function() {
+  asyncTest('Event - one', function() {
     var eventer;
     expect(1);
     eventer = new ns.Event;
@@ -66,7 +66,7 @@
     });
   });
 
-  asyncTest('fetchImg basic', function() {
+  asyncTest('fetchImg - basics', function() {
     expect(4);
     return $.when((ns.fetchImg('imgs/1.jpg')).done(function($img) {
       return equal($img.size(), 1, '1.jpg loaded');
@@ -81,22 +81,23 @@
     });
   });
 
-  asyncTest('fetchImg error', function() {
-    expect(1);
-    return $.when((ns.fetchImg('nothinghere')).then(function($img) {
+  asyncTest('fetchImg - error', function() {
+    expect(2);
+    return $.when((ns.fetchImg('nothinghere.jpg')).then(function($img) {
       return ok(false, 'img was not loaded but it saied ok');
-    }, function(error) {
-      return ok(true, "error msg: " + error.msg);
+    }, function($img) {
+      ok(true, 'deferred returned error');
+      return equal($img.size(), 1, 'returned error img');
     })).always(function() {
       return start();
     });
   });
 
-  asyncTest('fetchImg ensure same img', function() {
+  asyncTest('fetchImg - ensure same img', function() {
     expect(2);
-    return $.when((ns.fetchImg('imgs/1.jpg')).then(function($img) {
+    return $.when((ns.fetchImg('imgs/1.jpg')).done(function($img) {
       return $img;
-    }), (ns.fetchImg('imgs/1.jpg')).then(function($img) {
+    }), (ns.fetchImg('imgs/1.jpg')).done(function($img) {
       return $img;
     })).always(function($img1, $img2) {
       equal($img1.attr('src'), $img2.attr('src'), 'same img');
@@ -105,7 +106,7 @@
     });
   });
 
-  asyncTest('loadImg basic', function() {
+  asyncTest('loadImg - basic', function() {
     expect(2);
     return $.when((ns.loadImg('imgs/1.jpg')).then(function($img) {
       return $img;
@@ -118,7 +119,7 @@
     });
   });
 
-  asyncTest('LoaderItem load', function() {
+  asyncTest('LoaderItem - load', function() {
     expect(2);
     return $.when($.Deferred(function(defer) {
       var item;
@@ -139,12 +140,16 @@
     });
   });
 
-  asyncTest('LoaderItem event load', function() {
+  asyncTest('LoaderItem - event - success/complete', function() {
     var item;
-    expect(2);
+    expect(4);
     item = new ns.LoaderItem('imgs/1.jpg');
-    item.bind('load', function($img) {
-      ok(true, 'load event fired');
+    item.bind('complete', function($img) {
+      ok(true, 'complete event fired');
+      return equal($img.attr('src'), 'imgs/1.jpg', '1.jpg was thrown to handler');
+    });
+    item.bind('success', function($img) {
+      ok(true, 'success event fired');
       return equal($img.attr('src'), 'imgs/1.jpg', '1.jpg was thrown to handler');
     });
     return item.load().always(function() {
@@ -152,7 +157,24 @@
     });
   });
 
-  asyncTest('BasicLoader', function() {
+  asyncTest('LoaderItem - event - error/complete', function() {
+    var item;
+    expect(4);
+    item = new ns.LoaderItem('nothinghere.jpg');
+    item.bind('complete', function($img) {
+      ok(true, 'complete event fired');
+      return equal($img.attr('src'), 'nothinghere.jpg', '1.jpg was thrown to handler');
+    });
+    item.bind('error', function($img) {
+      ok(true, 'error event fired');
+      return equal($img.attr('src'), 'nothinghere.jpg', '1.jpg was thrown to handler');
+    });
+    return item.load().always(function() {
+      return start();
+    });
+  });
+
+  asyncTest('BasicLoader - basics', function() {
     var count, i, loader;
     expect(22);
     loader = new ns.BasicLoader;
@@ -174,7 +196,7 @@
     });
   });
 
-  asyncTest('BasicLoader add as string', function() {
+  asyncTest('BasicLoader - add - as string', function() {
     var count, i, loader;
     expect(22);
     loader = new ns.BasicLoader;
@@ -218,7 +240,7 @@
     });
   });
 
-  asyncTest('ChainLoader add as string', function() {
+  asyncTest('ChainLoader - add - as string', function() {
     var count, i, loader;
     expect(22);
     loader = new ns.ChainLoader(3);
@@ -240,29 +262,76 @@
     });
   });
 
+  asyncTest('ChainLoader - add - handles returned defer', function() {
+    var loader;
+    expect(4);
+    loader = new ns.ChainLoader(3);
+    (loader.add('imgs/1.jpg')).done(function($img) {
+      ok(true, 'loader add returned defer');
+      return equal($img.attr('src'), 'imgs/1.jpg', 'loader add returned img as deferred arg');
+    });
+    (loader.add('imgs/2.jpg')).done(function($img) {
+      ok(true, 'loader add returned defer');
+      return equal($img.attr('src'), 'imgs/2.jpg', 'loader add returned img as deferred arg');
+    });
+    return loader.load().always(function() {
+      return start();
+    });
+  });
+
+  asyncTest('ChainLoader - kill', function() {
+    var count, i, loader;
+    expect(1);
+    loader = new ns.ChainLoader(3);
+    count = 0;
+    loader.bind('itemload', function($img, i) {
+      return count++;
+    });
+    loader.bind('allload', function($imgs) {
+      return ok(false, 'allload fired');
+    });
+    for (i = 1; i <= 100; i++) {
+      loader.add(new ns.LoaderItem("imgs/" + i + ".jpg"));
+    }
+    loader.bind('kill', function() {
+      ok(count < 100, "" + count + " items were loaded. loading was stopped.");
+      return start();
+    });
+    loader.load();
+    return wait(10).done(function() {
+      return loader.kill();
+    });
+  });
+
   test('Facade without new handling', function() {
     var srcs;
     srcs = [1, 2, 3, 4];
     (function() {
       var loader;
-      loader = new $.ImgLoader(srcs);
+      loader = new $.ImgLoader({
+        srcs: srcs
+      });
       return ok(loader instanceof $.ImgLoader, 'with new');
     })();
     return (function() {
       var loader;
-      loader = $.ImgLoader(srcs);
+      loader = $.ImgLoader({
+        srcs: srcs
+      });
       return ok(loader instanceof $.ImgLoader, 'without new');
     })();
   });
 
-  asyncTest('Facade (to BasicLoader)', function() {
+  asyncTest('Facade - to BasicLoader', function() {
     var count, i, loader, srcs;
     expect(22);
     srcs = [];
     for (i = 1; i <= 10; i++) {
       srcs.push("imgs/" + i + ".jpg");
     }
-    loader = new $.ImgLoader(srcs);
+    loader = new $.ImgLoader({
+      srcs: srcs
+    });
     count = -1;
     loader.bind('itemload', function($img, i) {
       equal($img.size(), 1, ($img.attr('src')) + ' was loaded');
@@ -278,15 +347,16 @@
     });
   });
 
-  asyncTest('Facade (to ChainLoader)', function() {
+  asyncTest('Facade - to ChainLoader', function() {
     var count, i, loader, srcs;
     expect(22);
     srcs = [];
     for (i = 1; i <= 10; i++) {
       srcs.push("imgs/" + i + ".jpg");
     }
-    loader = new $.ImgLoader(srcs, {
-      chainsize: 5
+    loader = new $.ImgLoader({
+      srcs: srcs,
+      pipesize: 5
     });
     count = -1;
     loader.bind('itemload', function($img, i) {

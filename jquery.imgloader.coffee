@@ -3,6 +3,8 @@ ns = $.ImgLoaderNs = {}
 # ============================================================
 # utility
 # http://msdn.microsoft.com/ja-jp/scriptjunkie/gg723713.aspx
+# by caching deferreds, 'fetchImg' does not throw multiple request about one src
+# to wait the first img's loading.
 
 ns.createCachedFunction = (requestedFunction) ->
   cache = {}
@@ -17,25 +19,26 @@ ns.fetchImg = ns.createCachedFunction (defer, src) ->
   img = new Image
   cleanUp = -> img.onload = img.onerror = null
   defer.always cleanUp
-  img.onload = -> defer.resolve $(img)
-  img.onerror = -> defer.reject { msg: 'img load failed' }
+  $img = $(img)
+  img.onload = -> defer.resolve $img
+  img.onerror = -> defer.reject $img
   img.src = src
 
 do ->
+  # 'loadImg' returns the load-completed img in stash.
+  # then put cloned img into the stash back for future use.
+  # it must be load-completed on the next time
   cache = {} # $img stash
   ns.loadImg = (src) ->
     $.Deferred (defer) ->
       (ns.fetchImg src).then ($img) ->
         if(!cache[src]) then cache[src] = $img
-        # return loading finished img,
-        # put cloned img into the stash for future use
-        # because it is load finished on next time
         $cachedImg = cache[src]
         $cloned = $cachedImg.clone()
         cache[src] = $cloned
         defer.resolve $cachedImg
-      , (error) ->
-        defer.reject error
+      , ($img) ->
+        defer.reject $img
     .promise()
 
 
@@ -95,12 +98,16 @@ class ns.LoaderItem extends ns.Event
 
   load: ->
     $.Deferred (defer) =>
-      (ns.loadImg @src).then ($img) =>
+      (ns.loadImg @src).pipe ($img) =>
         @$img = $img
-        @trigger 'load', $img
-        defer.resolve $img
-      , (error) =>
-        @trigger 'load', $("<img src='#{@src}'>")
+        @trigger 'success', @$img
+        @trigger 'complete', @$img
+        defer.resolve @$img
+      , ($img) =>
+        @$img = $img
+        @trigger 'error', @$img
+        @trigger 'complete', @$img
+        defer.reject @$img
     .promise()
 
 # ============================================================
@@ -116,12 +123,12 @@ class ns.BasicLoader extends ns.Event
       src = loaderItem
       loaderItem = new ns.LoaderItem src
     @items.push loaderItem
-    @
+    loaderItem
 
   load: ->
     count = 0
     laodDeferreds = $.map @items, (item) =>
-      item.bind 'load', ($img) =>
+      item.bind 'complete', ($img) =>
         @trigger 'itemload', $img, count
         count++
       .load()
@@ -135,7 +142,7 @@ class ns.BasicLoader extends ns.Event
     @
 
 class ns.ChainLoader extends ns.Event
-  constructor: (@_chainsize, @_delay=0) ->
+  constructor: (@_pipesize, @_delay=0) ->
     super
     @_presets = []
     @_doneCount = 0
@@ -143,29 +150,31 @@ class ns.ChainLoader extends ns.Event
     @_allDoneDefer = $.Deferred()
 
   _finished: -> @_doneCount == @_presets.length
-  _nextLoadAllowed: -> (@_inLoadCount < @_chainsize)
+  _nextLoadAllowed: -> (@_inLoadCount < @_pipesize)
   _getImgs: ->
     $($.map @_presets, (preset) -> preset.item.$img)
 
   _handleNext: ->
     if @_finished()
+      if @_allloadFired then return @
+      @_allloadFired = true
       $imgs = @_getImgs()
       @trigger 'allload', $imgs
       @_allDoneDefer.resolve($imgs)
-      @
+      return @
     $.each @_presets, (i, preset) =>
       if preset.started then return true
       if not @_nextLoadAllowed() then return false
       @_inLoadCount++
       preset.started = true
-      preset.item.one 'load', ($img) =>
+      preset.item.one 'complete', ($img) =>
         preset.done = true
         setTimeout =>
           done = =>
             @trigger 'itemload', $img, @_doneCount
             @_inLoadCount--
             @_doneCount++
-            preset.defer.resolve()
+            preset.defer.resolve $img
             @_handleNext()
           if(i==0)
             done()
@@ -179,21 +188,23 @@ class ns.ChainLoader extends ns.Event
     if ($.type loaderItem) == 'string'
       src = loaderItem
       loaderItem = new ns.LoaderItem src
-    @_presets.push
+    preset =
       item:loaderItem
       done:false,
       started: false
       defer: $.Deferred()
-    @
+    @_presets.push preset
+    preset.defer
 
   load: ->
     @_handleNext()
     @_allDoneDefer
 
   kill: ->
-    @unbind()
     $.each @_presets, (i, preset) ->
       preset.item.unbind()
+    @trigger 'kill'
+    @unbind()
     @
 
 # ============================================================
@@ -201,27 +212,28 @@ class ns.ChainLoader extends ns.Event
 
 class ns.Facade
   
-  do => # bind methods to loader
-    methods = [ 'bind', 'trigger', 'load', 'one', 'unbind', 'add', 'kill' ]
-    $.each methods, (i, method) =>
-      @::[method] = (args...) -> @loader[method].apply @loader, args
+  # bind methods to loader
+  methods = [ 'bind', 'trigger', 'load', 'one', 'unbind', 'add', 'kill' ]
+  $.each methods, (i, method) =>
+    @::[method] = (args...) -> @loader[method].apply @loader, args
 
-  constructor: (@_srcs, options) ->
+  constructor: (options) ->
 
     # handle without new call
     if not (@ instanceof arguments.callee)
-      return new ns.Facade(_srcs, options)
+      return new ns.Facade(options)
 
     @options = o = $.extend(
-      chainsize: 0
+      srcs: []
+      pipesize: 0
       delay: 100
     , options)
 
-    if o.chainsize
-      @loader = new ns.ChainLoader o.chainsize, o.delay
+    if o.pipesize
+      @loader = new ns.ChainLoader o.pipesize, o.delay
     else
       @loader = new ns.BasicLoader
-    $.each @_srcs, (i, src) =>
+    $.each o.srcs, (i, src) =>
       @loader.add new ns.LoaderItem src
 
 

@@ -3,19 +3,31 @@
 var proc = require('child_process');
 
 config.init({
+  pkg: '<json:package.json>',
+  meta: {
+    banner: '/*! <%= pkg.name %> - v<%= pkg.version %> - ' +
+      ' <%= template.today("m/d/yyyy") %>\n' +
+      ' <%= pkg.homepage ? "* " + pkg.homepage + "\n" : "" %>' +
+      ' * Copyright (c) <%= template.today("yyyy") %> <%= pkg.author.name %>;' +
+      ' Licensed <%= _.pluck(pkg.licenses, "type").join(", ") %> */'
+  },
+  concat: {
+    '../jquery.imgloader.js': [ '<banner>', '../jquery.imgloader.js' ]
+  },
   watch: {
     files: [
       '../*.coffee',
+      '../demo2/script.coffee',
       '../qunit/test.coffee'
     ],
-    tasks: 'coffee min notifyOK'
+    tasks: 'coffee min concat notifyOK'
   },
   min: {
-    '../jquery.imgloader.min.js': [ '../jquery.imgloader.js' ]
+    '../jquery.imgloader.min.js': [ '<banner>', '../jquery.imgloader.js' ]
   },
   coffee: {
     '../jquery.imgloader.js': [ '../jquery.imgloader.coffee' ],
-    '../demo.js': [ '../demo.coffee' ],
+    '../demo2/script.js': [ '../demo2/script.coffee' ],
     '../qunit/test.js': [ '../qunit/test.coffee' ]
   }
 });
@@ -37,4 +49,4 @@ task.registerTask('notifyOK', 'done!', function(){
   proc.exec("growlnotify -t 'grunt.js' -m '＼(^o^)／'");
 });
 
-task.registerTask('default', 'coffee min notifyOK');
+task.registerTask('default', 'coffee min concat notifyOK');

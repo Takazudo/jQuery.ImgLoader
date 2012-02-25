@@ -1,3 +1,7 @@
+/*! jQuery.ImgLoader - v0.1.0 -  2/26/2012
+ * https://github.com/Takazudo/jQuery.ImgLoader
+ * Copyright (c) 2012 "Takazudo" Takeshi Takatsudo; Licensed MIT */
+
 (function() {
   var ns,
     __slice = Array.prototype.slice,
@@ -20,19 +24,18 @@
   };
 
   ns.fetchImg = ns.createCachedFunction(function(defer, src) {
-    var cleanUp, img;
+    var $img, cleanUp, img;
     img = new Image;
     cleanUp = function() {
       return img.onload = img.onerror = null;
     };
     defer.always(cleanUp);
+    $img = $(img);
     img.onload = function() {
-      return defer.resolve($(img));
+      return defer.resolve($img);
     };
     img.onerror = function() {
-      return defer.reject({
-        msg: 'img load failed'
-      });
+      return defer.reject($img);
     };
     return img.src = src;
   });
@@ -49,8 +52,8 @@
           $cloned = $cachedImg.clone();
           cache[src] = $cloned;
           return defer.resolve($cachedImg);
-        }, function(error) {
-          return defer.reject(error);
+        }, function($img) {
+          return defer.reject($img);
         });
       }).promise();
     };
@@ -132,12 +135,16 @@
     LoaderItem.prototype.load = function() {
       var _this = this;
       return $.Deferred(function(defer) {
-        return (ns.loadImg(_this.src)).then(function($img) {
+        return (ns.loadImg(_this.src)).pipe(function($img) {
           _this.$img = $img;
-          _this.trigger('load', $img);
-          return defer.resolve($img);
-        }, function(error) {
-          return _this.trigger('load', $("<img src='" + _this.src + "'>"));
+          _this.trigger('success', _this.$img);
+          _this.trigger('complete', _this.$img);
+          return defer.resolve(_this.$img);
+        }, function($img) {
+          _this.$img = $img;
+          _this.trigger('error', _this.$img);
+          _this.trigger('complete', _this.$img);
+          return defer.reject(_this.$img);
         });
       }).promise();
     };
@@ -162,7 +169,7 @@
         loaderItem = new ns.LoaderItem(src);
       }
       this.items.push(loaderItem);
-      return this;
+      return loaderItem;
     };
 
     BasicLoader.prototype.load = function() {
@@ -170,7 +177,7 @@
         _this = this;
       count = 0;
       laodDeferreds = $.map(this.items, function(item) {
-        return item.bind('load', function($img) {
+        return item.bind('complete', function($img) {
           _this.trigger('itemload', $img, count);
           return count++;
         }).load();
@@ -198,8 +205,8 @@
 
     __extends(ChainLoader, _super);
 
-    function ChainLoader(_chainsize, _delay) {
-      this._chainsize = _chainsize;
+    function ChainLoader(_pipesize, _delay) {
+      this._pipesize = _pipesize;
       this._delay = _delay != null ? _delay : 0;
       ChainLoader.__super__.constructor.apply(this, arguments);
       this._presets = [];
@@ -213,7 +220,7 @@
     };
 
     ChainLoader.prototype._nextLoadAllowed = function() {
-      return this._inLoadCount < this._chainsize;
+      return this._inLoadCount < this._pipesize;
     };
 
     ChainLoader.prototype._getImgs = function() {
@@ -226,17 +233,19 @@
       var $imgs,
         _this = this;
       if (this._finished()) {
+        if (this._allloadFired) return this;
+        this._allloadFired = true;
         $imgs = this._getImgs();
         this.trigger('allload', $imgs);
         this._allDoneDefer.resolve($imgs);
-        this;
+        return this;
       }
       $.each(this._presets, function(i, preset) {
         if (preset.started) return true;
         if (!_this._nextLoadAllowed()) return false;
         _this._inLoadCount++;
         preset.started = true;
-        preset.item.one('load', function($img) {
+        preset.item.one('complete', function($img) {
           preset.done = true;
           return setTimeout(function() {
             var done;
@@ -244,7 +253,7 @@
               _this.trigger('itemload', $img, _this._doneCount);
               _this._inLoadCount--;
               _this._doneCount++;
-              preset.defer.resolve();
+              preset.defer.resolve($img);
               return _this._handleNext();
             };
             if (i === 0) {
@@ -262,18 +271,19 @@
     };
 
     ChainLoader.prototype.add = function(loaderItem) {
-      var src;
+      var preset, src;
       if (($.type(loaderItem)) === 'string') {
         src = loaderItem;
         loaderItem = new ns.LoaderItem(src);
       }
-      this._presets.push({
+      preset = {
         item: loaderItem,
         done: false,
         started: false,
         defer: $.Deferred()
-      });
-      return this;
+      };
+      this._presets.push(preset);
+      return preset.defer;
     };
 
     ChainLoader.prototype.load = function() {
@@ -282,10 +292,11 @@
     };
 
     ChainLoader.prototype.kill = function() {
-      this.unbind();
       $.each(this._presets, function(i, preset) {
         return preset.item.unbind();
       });
+      this.trigger('kill');
+      this.unbind();
       return this;
     };
 
@@ -294,37 +305,34 @@
   })(ns.Event);
 
   ns.Facade = (function() {
-    var _this = this;
+    var methods,
+      _this = this;
 
-    (function() {
-      var methods;
-      methods = ['bind', 'trigger', 'load', 'one', 'unbind', 'add', 'kill'];
-      return $.each(methods, function(i, method) {
-        return Facade.prototype[method] = function() {
-          var args;
-          args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
-          return this.loader[method].apply(this.loader, args);
-        };
-      });
-    })();
+    methods = ['bind', 'trigger', 'load', 'one', 'unbind', 'add', 'kill'];
 
-    function Facade(_srcs, options) {
+    $.each(methods, function(i, method) {
+      return Facade.prototype[method] = function() {
+        var args;
+        args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
+        return this.loader[method].apply(this.loader, args);
+      };
+    });
+
+    function Facade(options) {
       var o,
         _this = this;
-      this._srcs = _srcs;
-      if (!(this instanceof arguments.callee)) {
-        return new ns.Facade(_srcs, options);
-      }
+      if (!(this instanceof arguments.callee)) return new ns.Facade(options);
       this.options = o = $.extend({
-        chainsize: 0,
+        srcs: [],
+        pipesize: 0,
         delay: 100
       }, options);
-      if (o.chainsize) {
-        this.loader = new ns.ChainLoader(o.chainsize, o.delay);
+      if (o.pipesize) {
+        this.loader = new ns.ChainLoader(o.pipesize, o.delay);
       } else {
         this.loader = new ns.BasicLoader;
       }
-      $.each(this._srcs, function(i, src) {
+      $.each(o.srcs, function(i, src) {
         return _this.loader.add(new ns.LoaderItem(src));
       });
     }

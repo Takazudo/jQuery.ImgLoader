@@ -1,7 +1,8 @@
 (function() {
 
   $(function() {
-    var $chainsize, $delay, $form, $growl, $imgs, $options, $usechain, cleanGrowl, loader, notify, randomSrcs, refresh;
+    var $delay, $form, $growl, $imgs, $options, $pipesize, $usechain, cleanGrowl, loader, notify, randomSrcs, refresh;
+    loader = null;
     $imgs = $('#imgs');
     $growl = $('#growl');
     $form = $('form').bind('submit', function(e) {
@@ -10,47 +11,18 @@
     });
     $usechain = $('[name=usechain]', $form);
     $options = $('.options', $form);
-    $chainsize = $('[name=chainsize]', $form);
+    $pipesize = $('[name=pipesize]', $form);
     $delay = $('[name=delay]', $form);
     $usechain.filter('[value=yes]').click(function() {
       $options.css('opacity', 1);
-      $chainsize.prop('disabled', false);
+      $pipesize.prop('disabled', false);
       return $delay.prop('disabled', false);
     });
     $usechain.filter('[value=no]').click(function() {
       $options.css('opacity', 0.5);
-      $chainsize.prop('disabled', true);
+      $pipesize.prop('disabled', true);
       return $delay.prop('disabled', true);
     });
-    loader = null;
-    refresh = function() {
-      var chainsize, delay, options, usechain;
-      if (loader) loader.kill();
-      $imgs.empty();
-      if ($usechain.filter(':checked').val() === 'yes') usechain = true;
-      chainsize = $chainsize.val() * 1;
-      delay = $delay.val() * 1;
-      if (usechain) {
-        options = {
-          chainsize: chainsize,
-          delay: delay
-        };
-      } else {
-        options = null;
-      }
-      loader = $.ImgLoader(randomSrcs(), options);
-      loader.bind('itemload', function($img) {
-        $imgs.append($img);
-        notify("itemload fired: " + ($img.attr('src')));
-        return setTimeout((function() {
-          return $img.css('opacity', 1);
-        }), 1);
-      });
-      loader.bind('allload', function() {
-        return notify('allload fired');
-      });
-      return loader.load();
-    };
     cleanGrowl = function() {
       var $items;
       $items = $growl.find('div');
@@ -63,14 +35,43 @@
       $item.prependTo($growl);
       return cleanGrowl();
     };
-    return randomSrcs = function() {
+    randomSrcs = function() {
       var i, random, srcs;
       srcs = [];
       random = $.now();
       for (i = 1; i <= 50; i++) {
-        srcs.push("imgs/" + i + ".jpg?" + random);
+        srcs.push("../imgs/" + i + ".jpg?" + random);
       }
       return srcs;
+    };
+    return refresh = function() {
+      var delay, options, pipesize, usechain;
+      if (loader) loader.kill();
+      $imgs.empty();
+      if ($usechain.filter(':checked').val() === 'yes') usechain = true;
+      pipesize = $pipesize.val() * 1;
+      delay = $delay.val() * 1;
+      if (usechain) {
+        options = {
+          pipesize: pipesize,
+          delay: delay
+        };
+      } else {
+        options = null;
+      }
+      options.srcs = randomSrcs();
+      loader = $.ImgLoader(options);
+      loader.bind('itemload', function($img) {
+        $imgs.append($img);
+        notify("itemload fired: " + ($img.attr('src')));
+        return setTimeout((function() {
+          return $img.css('opacity', 1);
+        }), 1);
+      });
+      loader.bind('allload', function() {
+        return notify('allload fired');
+      });
+      return loader.load();
     };
   });
 
