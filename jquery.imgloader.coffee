@@ -95,10 +95,12 @@ class ns.LoaderItem extends ns.Event
 
   load: ->
     $.Deferred (defer) =>
-      (ns.loadImg @src).done ($img) =>
+      (ns.loadImg @src).then ($img) =>
         @$img = $img
         @trigger 'load', $img
         defer.resolve $img
+      , (error) =>
+        @trigger 'load', $("<img src='#{@src}'>")
     .promise()
 
 # ============================================================
@@ -124,7 +126,7 @@ class ns.BasicLoader extends ns.Event
         count++
       .load()
     $.Deferred (defer) =>
-      ($.when.apply @, laodDeferreds).done (imgs...) =>
+      ($.when.apply @, laodDeferreds).always (imgs...) =>
         $imgs = $(imgs)
         @trigger 'allload', $imgs
         defer.resolve $imgs
@@ -153,7 +155,7 @@ class ns.ChainLoader extends ns.Event
       if not @_nextLoadAllowed() then return false
       @_inLoadCount++
       preset.started = true
-      preset.item.load().always ($img) =>
+      preset.item.one 'load', ($img) =>
         preset.done = true
         setTimeout =>
           done = =>
@@ -165,8 +167,9 @@ class ns.ChainLoader extends ns.Event
           if(i==0)
             done()
           else
-            @_presets[i-1].defer.done -> done()
+            @_presets[i-1].defer.always -> done()
         , @_delay
+      preset.item.load()
     @
 
   add: (loaderItem) ->

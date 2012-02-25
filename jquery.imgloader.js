@@ -132,10 +132,12 @@
     LoaderItem.prototype.load = function() {
       var _this = this;
       return $.Deferred(function(defer) {
-        return (ns.loadImg(_this.src)).done(function($img) {
+        return (ns.loadImg(_this.src)).then(function($img) {
           _this.$img = $img;
           _this.trigger('load', $img);
           return defer.resolve($img);
+        }, function(error) {
+          return _this.trigger('load', $("<img src='" + _this.src + "'>"));
         });
       }).promise();
     };
@@ -174,7 +176,7 @@
         }).load();
       });
       return $.Deferred(function(defer) {
-        return ($.when.apply(_this, laodDeferreds)).done(function() {
+        return ($.when.apply(_this, laodDeferreds)).always(function() {
           var $imgs, imgs;
           imgs = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
           $imgs = $(imgs);
@@ -230,7 +232,7 @@
         if (!_this._nextLoadAllowed()) return false;
         _this._inLoadCount++;
         preset.started = true;
-        return preset.item.load().always(function($img) {
+        preset.item.one('load', function($img) {
           preset.done = true;
           return setTimeout(function() {
             var done;
@@ -244,12 +246,13 @@
             if (i === 0) {
               return done();
             } else {
-              return _this._presets[i - 1].defer.done(function() {
+              return _this._presets[i - 1].defer.always(function() {
                 return done();
               });
             }
           }, _this._delay);
         });
+        return preset.item.load();
       });
       return this;
     };
