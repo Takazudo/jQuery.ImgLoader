@@ -113,6 +113,14 @@ loader.kill(); // stop all!
 This 'kill' method is available for BasicLoader too.  
 But, BasicLoader starts imgs' loading at once. You can't stop already-started imgs' loadings to the browsers. 'kill' stops the all future events about the imgs. But, background-loading cannnot be stopped. Use ChainLoader for huge amount of imgs.
 
+## Depends
+
+jQuery 1.7.1
+
+## Browsers
+
+IE6+ and other news browsers
+
 ## License
 
 Copyright (c) 2012 "Takazudo" Takeshi Takatsudo  
