@@ -57,7 +57,7 @@
           delay: delay
         };
       } else {
-        options = null;
+        options = {};
       }
       options.srcs = randomSrcs();
       loader = $.ImgLoader(options);

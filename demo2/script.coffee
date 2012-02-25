@@ -54,7 +54,7 @@ $ ->
         pipesize: pipesize
         delay: delay
     else
-      options = null
+      options = {}
 
     options.srcs = randomSrcs()
 
