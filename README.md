@@ -1,7 +1,7 @@
 # jQuery.ImgLoader
 
-jQuery.Imgloader handles imgs' loading.  
-Img elements are loaded progressively on the html. jQuery.ImgLoader loads imgs as background task. This triggers events when they were loaded to the browser. So, you can append the load-completed imgs to the html.
+jQuery.Imgloader handles multiple imgs' loading.  
+Img elements are loaded progressively on the page. jQuery.ImgLoader loads imgs as background task. This triggers events when each imgs' loadings were completed. Then, you can append the load-completed imgs to the page.
 
 ## demos
 
@@ -9,6 +9,19 @@ Img elements are loaded progressively on the html. jQuery.ImgLoader loads imgs a
 * [http://takazudo.github.com/jQuery.ImgLoader/demo2/example.html](http://takazudo.github.com/jQuery.ImgLoader/demo2/example.html)
 
 ## Usage
+
+### single image loading
+
+$.loadImg(src) returns the deferred.  
+It will be resolved when the img's loading was complete.
+
+```javascript
+$.loadImg('img1.jpg').then(function($img){
+  $('#somewhere').append($img);
+}, function(){
+  alert('could not load 1.jpg');
+})
+```
 
 ### BasicLoader
 
@@ -34,7 +47,7 @@ loader.load();
 ### ChainLoader
 
 ChainLoader limits the number of img loading executed at once.  
-BasicLoader sometimes gets troubled when the number of imgs were huge. It's tough work to load 100 imgs at once for the browsers. If you specify 3 as pipesize, ChainLoader doesnot loads 4 or more imgs at once. This may help you to reduce the loads to the browser, and also keeps the loading order.
+BasicLoader sometimes gets troubled when the number of imgs were huge. It's tough work to load 100 imgs at once for browsers. If you specify 3 as pipesize, ChainLoader doesnot loads 4 or more imgs at once. This may help you to reduce the loads to the browser, and also keeps the loading order.
 
 #### basics
 
@@ -96,6 +109,9 @@ loader.bind('allload', function($img){
 loader.load();
 loader.kill(); // stop all!
 ```
+
+This 'kill' method is available for BasicLoader too.  
+But, BasicLoader starts imgs' loading at once. So, you can't stop the started img loadings to the browsers. Use ChainLoader for huge amount of imgs.
 
 ## License
 
