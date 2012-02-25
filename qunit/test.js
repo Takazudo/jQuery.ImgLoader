@@ -220,7 +220,7 @@
 
   asyncTest('BasicLoader - kill', function() {
     var count, i, loader;
-    expect(1);
+    expect(2);
     loader = new ns.BasicLoader;
     count = 0;
     loader.bind('itemload', function($img, i) {
@@ -233,11 +233,16 @@
       loader.add(new ns.LoaderItem("imgs/" + i + ".jpg"));
     }
     loader.bind('kill', function() {
+      var count_killedTiming;
       ok(count < 100, "" + count + " items were loaded. loading was stopped.");
-      return start();
+      count_killedTiming = count;
+      return wait(1000).done(function() {
+        equal(count_killedTiming, count, "no itemload evets were occured after kill. " + count_killedTiming + " - " + count);
+        return start();
+      });
     });
     loader.load();
-    return wait(10).done(function() {
+    return wait(100).done(function() {
       return loader.kill();
     });
   });

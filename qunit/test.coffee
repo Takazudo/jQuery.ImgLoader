@@ -178,7 +178,7 @@ asyncTest 'BasicLoader - add - as string', ->
 
 asyncTest 'BasicLoader - kill', ->
 
-  expect 1
+  expect 2
   loader = new ns.BasicLoader
   count = 0
 
@@ -193,11 +193,14 @@ asyncTest 'BasicLoader - kill', ->
 
   loader.bind 'kill', ->
     ok count<100, "#{count} items were loaded. loading was stopped."
-    start()
+    count_killedTiming = count
+    wait(1000).done ->
+      equal count_killedTiming, count, "no itemload evets were occured after kill. #{count_killedTiming} - #{count}"
+      start()
 
   loader.load()
 
-  wait(10).done -> loader.kill()
+  wait(100).done -> loader.kill()
 
 asyncTest 'ChainLoader', ->
 
