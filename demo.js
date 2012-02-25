@@ -1,7 +1,7 @@
 (function() {
 
   $(function() {
-    var $chainsize, $delay, $form, $growl, $imgs, $options, $usechain, cleanGrowl, notify, randomSrcs, refresh;
+    var $chainsize, $delay, $form, $growl, $imgs, $options, $usechain, cleanGrowl, loader, notify, randomSrcs, refresh;
     $imgs = $('#imgs');
     $growl = $('#growl');
     $form = $('form').bind('submit', function(e) {
@@ -22,8 +22,10 @@
       $chainsize.prop('disabled', true);
       return $delay.prop('disabled', true);
     });
+    loader = null;
     refresh = function() {
-      var chainsize, delay, loader, options, usechain;
+      var chainsize, delay, options, usechain;
+      if (loader) loader.unbind();
       $imgs.empty();
       if ($usechain.filter(':checked').val() === 'yes') usechain = true;
       chainsize = $chainsize.val() * 1;

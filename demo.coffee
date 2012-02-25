@@ -21,7 +21,11 @@ $ ->
     $chainsize.prop 'disabled', true
     $delay.prop 'disabled', true
 
+  loader = null
+
   refresh = ->
+    
+    if loader then loader.unbind()
 
     $imgs.empty()
     usechain = true if $usechain.filter(':checked').val() == 'yes'
