@@ -126,7 +126,7 @@ IE6+ and other news browsers
 Copyright (c) 2012 "Takazudo" Takeshi Takatsudo  
 Licensed under the MIT license.
 
-# Misc
+## Misc
 
 This scirpt was developed with following things.  
 
