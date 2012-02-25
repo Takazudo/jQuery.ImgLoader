@@ -408,10 +408,11 @@
   });
 
   asyncTest('calcNaturalWH - ok', function() {
-    expect(2);
-    return ($.calcNaturalWH('imgs/1.jpg')).then(function(wh) {
+    expect(3);
+    return ($.calcNaturalWH('imgs/1.jpg')).then(function(wh, $img) {
       equal(wh.width, 320, "width caliculated correctly " + wh.width);
-      return equal(wh.height, 320, "height caliculated correctly " + wh.height);
+      equal(wh.height, 320, "height caliculated correctly " + wh.height);
+      return equal($img.attr('src'), 'imgs/1.jpg', 'img element was returned');
     }, function() {
       return ok(false, 'failed');
     }).always(function() {

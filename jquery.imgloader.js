@@ -380,6 +380,7 @@
     };
     tryCalc = function($img, src) {
       var img;
+      $img = $img.clone();
       img = $img[0];
       return $.Deferred(function(defer) {
         var $div, count, oneTry, res;
@@ -413,14 +414,14 @@
         return oneTry();
       }).promise();
     };
-    return ns.calcWH = ns.createCachedFunction(function(defer, src) {
+    return ns.calcNaturalWH = ns.createCachedFunction(function(defer, src) {
       return (ns.loadImg(src)).then(function($img) {
         var img, wh;
         img = $img[0];
         if (naturalWHDetectable(img)) {
           return $holderSetup().done(function() {
             return (tryCalc($img, src)).then(function(wh) {
-              return defer.resolve(wh);
+              return defer.resolve(wh, $img);
             }, function() {
               return defer.reject();
             });
@@ -431,7 +432,7 @@
             height: img.naturalHeight
           };
           cache[src] = wh;
-          return defer.resolve(wh);
+          return defer.resolve(wh, $img);
         }
       }, function() {
         return defer.reject();
@@ -443,6 +444,6 @@
 
   $.ImgLoader = ns.LoaderFacade;
 
-  $.calcNaturalWH = ns.calcWH;
+  $.calcNaturalWH = ns.calcNaturalWH;
 
 }).call(this);

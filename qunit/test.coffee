@@ -340,11 +340,12 @@ asyncTest 'LoaderFacade - to ChainLoader', ->
 
 asyncTest 'calcNaturalWH - ok', ->
 
-  expect 2
+  expect 3
 
-  ($.calcNaturalWH 'imgs/1.jpg').then (wh) ->
+  ($.calcNaturalWH 'imgs/1.jpg').then (wh, $img) ->
     equal wh.width, 320, "width caliculated correctly #{wh.width}"
     equal wh.height, 320, "height caliculated correctly #{wh.height}"
+    equal ($img.attr 'src'), 'imgs/1.jpg', 'img element was returned'
   , ->
     ok false, 'failed'
   .always ->

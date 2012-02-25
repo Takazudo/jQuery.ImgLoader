@@ -282,7 +282,10 @@ do ->
   # I don't know why but this caliculation fails sometimes.
   # delaying caliculation works well against this
   tryCalc = ($img, src) ->
+
+    $img = $img.clone() # to avoid test style applied here
     img = $img[0]
+
     $.Deferred (defer) ->
 
       res = {}
@@ -313,13 +316,13 @@ do ->
     .promise()
 
   # main
-  ns.calcWH = ns.createCachedFunction (defer, src) ->
+  ns.calcNaturalWH = ns.createCachedFunction (defer, src) ->
     (ns.loadImg src).then ($img) ->
       img = $img[0]
       if naturalWHDetectable img
         $holderSetup().done ->
           (tryCalc $img, src).then (wh) ->
-            defer.resolve(wh)
+            defer.resolve wh, $img
           , ->
             defer.reject()
       else
@@ -327,7 +330,7 @@ do ->
           width: img.naturalWidth
           height: img.naturalHeight
         cache[src] = wh
-        defer.resolve wh
+        defer.resolve wh, $img
     , ->
       defer.reject()
 
@@ -336,4 +339,4 @@ do ->
 
 $.loadImg = ns.loadImg
 $.ImgLoader = ns.LoaderFacade
-$.calcNaturalWH = ns.calcWH
+$.calcNaturalWH = ns.calcNaturalWH
