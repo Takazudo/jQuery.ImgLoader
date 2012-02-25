@@ -50,7 +50,7 @@ loader.load();
 ChainLoader limits the number of img loading executed at once.  
 BasicLoader sometimes gets troubled when the number of imgs were huge. It's tough work to load 100 imgs at once for browsers. If you specify 3 as pipesize, ChainLoader doesnot loads 4 or more imgs at once. This may help you to reduce the loads to the browser, and also keeps the loading order.
 
-#### $.ImgLoader - basics
+#### ChainLoader - basics
 
 Just throw 'pipesize' and 'delay'(optional) to $.ImgLoader.
 
@@ -72,7 +72,7 @@ loader.load();
 The code above loads 'img1.jpg' and 'img2.jpg' at once first.  
 When either of them was loaded, loader starts loading 'img3.jpg' after 100 millisec delay.
 
-#### $.ImgLoader - 'add' handle items one by one
+#### ChainLoader - 'add' handle items one by one
 
 You may want to handle each img's loading individually.  
 Then, you can use 'add' method to register single loading task. It returns jQuery deferred about loading.
@@ -94,7 +94,7 @@ loader.add('2.jpg').then(function($img){
 loader.load();
 ```
 
-#### $.ImgLoader - 'kill' stop all loading immediately
+#### ChainLoader - 'kill' stop all loading immediately
 
 Call 'kill' if you want to stop loading tasks.
 
