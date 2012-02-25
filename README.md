@@ -1,7 +1,7 @@
 # jQuery.ImgLoader
 
 jQuery.Imgloader handles multiple imgs' loading.  
-Img elements are loaded progressively on the page. jQuery.ImgLoader loads imgs as background task. This triggers events when each imgs' loadings were completed. Then, you can append the load-completed imgs to the page.
+Img elements are loaded progressively on the page. jQuery.ImgLoader loads imgs as background task. This triggers events when each imgs' loadings was completed. You can append the load-completed imgs to the page with this.
 
 ## demos
 
@@ -26,10 +26,10 @@ $.loadImg('img1.jpg').then(function($img){
 ### BasicLoader
 
 BasicLoader is a simple loader.  
-This starts loading all thronw img srcs at once.  
+This starts loading all thrown srcs at once.  
 You can bind 'itemload' and 'allload' event.  
 'itemload' event will be fired when each imgs was loaded.  
-'allload' event will be fired when each imgs was loaded.
+'allload' event will be fired when all imgs were loaded.
 
 ```javascript
 var loader = $.ImgLoader({
@@ -69,7 +69,7 @@ loader.load();
 ```
 
 The code above loads 'img1.jpg' and 'img2.jpg' at once first.  
-When either of them was loaded, loader start loading 'img3.jpg' after 100 millisec delay.
+When either of them was loaded, loader starts loading 'img3.jpg' after 100 millisec delay.
 
 #### handle items one by one
 
@@ -111,7 +111,7 @@ loader.kill(); // stop all!
 ```
 
 This 'kill' method is available for BasicLoader too.  
-But, BasicLoader starts imgs' loading at once. So, you can't stop the started img loadings to the browsers. Use ChainLoader for huge amount of imgs.
+But, BasicLoader starts imgs' loading at once. You can't stop already-started imgs' loadings to the browsers. 'kill' stops the all future events about the imgs. But, background-loading cannnot be stopped. Use ChainLoader for huge amount of imgs.
 
 ## License
 
