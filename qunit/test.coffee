@@ -176,6 +176,29 @@ asyncTest 'BasicLoader - add - as string', ->
     equal $imgs.size(), 10, 'done deferred worked'
     start()
 
+asyncTest 'BasicLoader - kill', ->
+
+  expect 1
+  loader = new ns.BasicLoader
+  count = 0
+
+  loader.bind 'itemload', ($img, i) ->
+    count++
+
+  loader.bind 'allload', ($imgs) ->
+    ok false, 'allload fired'
+
+  for i in [1..100]
+    loader.add (new ns.LoaderItem "imgs/#{i}.jpg")
+
+  loader.bind 'kill', ->
+    ok count<100, "#{count} items were loaded. loading was stopped."
+    start()
+
+  loader.load()
+
+  wait(10).done -> loader.kill()
+
 asyncTest 'ChainLoader', ->
 
   expect 22

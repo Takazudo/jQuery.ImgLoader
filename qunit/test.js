@@ -218,6 +218,30 @@
     });
   });
 
+  asyncTest('BasicLoader - kill', function() {
+    var count, i, loader;
+    expect(1);
+    loader = new ns.BasicLoader;
+    count = 0;
+    loader.bind('itemload', function($img, i) {
+      return count++;
+    });
+    loader.bind('allload', function($imgs) {
+      return ok(false, 'allload fired');
+    });
+    for (i = 1; i <= 100; i++) {
+      loader.add(new ns.LoaderItem("imgs/" + i + ".jpg"));
+    }
+    loader.bind('kill', function() {
+      ok(count < 100, "" + count + " items were loaded. loading was stopped.");
+      return start();
+    });
+    loader.load();
+    return wait(10).done(function() {
+      return loader.kill();
+    });
+  });
+
   asyncTest('ChainLoader', function() {
     var count, i, loader;
     expect(22);

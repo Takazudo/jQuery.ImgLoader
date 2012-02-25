@@ -139,6 +139,10 @@ class ns.BasicLoader extends ns.Event
         defer.resolve $imgs
 
   kill: ->
+    $.each @items, (i, item) ->
+      item.unbind()
+    @trigger 'kill'
+    @unbind()
     @
 
 class ns.ChainLoader extends ns.Event

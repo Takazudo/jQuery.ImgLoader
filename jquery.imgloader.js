@@ -194,6 +194,11 @@
     };
 
     BasicLoader.prototype.kill = function() {
+      $.each(this.items, function(i, item) {
+        return item.unbind();
+      });
+      this.trigger('kill');
+      this.unbind();
       return this;
     };
 
