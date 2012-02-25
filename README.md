@@ -119,7 +119,7 @@ jQuery 1.7.1
 
 ## Browsers
 
-IE6+ and other news browsers
+IE6+ and other new browsers
 
 ## License
 
