@@ -418,7 +418,7 @@
       return (ns.loadImg(src)).then(function($img) {
         var img, wh;
         img = $img[0];
-        if (naturalWHDetectable(img)) {
+        if (!(naturalWHDetectable(img))) {
           return $holderSetup().done(function() {
             return (tryCalc($img, src)).then(function(wh) {
               return defer.resolve(wh, $img);

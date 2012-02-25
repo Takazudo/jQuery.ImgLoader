@@ -319,7 +319,7 @@ do ->
   ns.calcNaturalWH = ns.createCachedFunction (defer, src) ->
     (ns.loadImg src).then ($img) ->
       img = $img[0]
-      if naturalWHDetectable img
+      if not (naturalWHDetectable img)
         $holderSetup().done ->
           (tryCalc $img, src).then (wh) ->
             defer.resolve wh, $img
