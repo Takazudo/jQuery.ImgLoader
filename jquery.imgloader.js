@@ -3,7 +3,7 @@
  * Copyright (c) 2012 "Takazudo" Takeshi Takatsudo; Licensed MIT */
 
 (function() {
-  var ns,
+  var ns, wait,
     __slice = Array.prototype.slice,
     __hasProp = Object.prototype.hasOwnProperty,
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor; child.__super__ = parent.prototype; return child; };
@@ -58,6 +58,14 @@
       }).promise();
     };
   })();
+
+  wait = function(time) {
+    return $.Deferred(function(defer) {
+      return setTimeout(function() {
+        return defer.resolve();
+      }, time);
+    });
+  };
 
   ns.Event = (function() {
 
@@ -309,24 +317,24 @@
 
   })(ns.Event);
 
-  ns.Facade = (function() {
+  ns.LoaderFacade = (function() {
     var methods,
       _this = this;
 
     methods = ['bind', 'trigger', 'load', 'one', 'unbind', 'add', 'kill'];
 
     $.each(methods, function(i, method) {
-      return Facade.prototype[method] = function() {
+      return LoaderFacade.prototype[method] = function() {
         var args;
         args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
         return this.loader[method].apply(this.loader, args);
       };
     });
 
-    function Facade(options) {
+    function LoaderFacade(options) {
       var o,
         _this = this;
-      if (!(this instanceof arguments.callee)) return new ns.Facade(options);
+      if (!(this instanceof arguments.callee)) return new ns.LoaderFacade(options);
       this.options = o = $.extend({
         srcs: [],
         pipesize: 0,
@@ -342,12 +350,99 @@
       });
     }
 
-    return Facade;
+    return LoaderFacade;
 
   }).call(this);
 
+  (function() {
+    var $holder, $holderSetup, cache, naturalWHDetectable, tryCalc;
+    cache = {};
+    $holder = null;
+    $holderSetup = function() {
+      return $.Deferred(function(defer) {
+        return $(function() {
+          $holder = $('<div id="calcNaturalWH-tempholder"></div>').css({
+            position: 'absolute',
+            left: '-9999px',
+            top: '-9999px'
+          });
+          $('body').append($holder);
+          return defer.resolve();
+        });
+      }).promise();
+    };
+    naturalWHDetectable = function(img) {
+      if ((img.naturalWidth === void 0) || (img.naturalWidth === 0) || (img.naturalHeight === void 0) || (img.naturalHeight === 0)) {
+        return false;
+      } else {
+        return true;
+      }
+    };
+    tryCalc = function($img, src) {
+      var img;
+      img = $img[0];
+      return $.Deferred(function(defer) {
+        var $div, count, oneTry, res;
+        res = {};
+        $img.css({
+          width: 'auto',
+          height: 'auto'
+        });
+        $div = $('<div></div>').append($img);
+        $holder.append($div);
+        count = 0;
+        oneTry = function() {
+          res.width = img.naturalWidth || $img.width();
+          res.height = img.naturalHeight || $img.height();
+          if (count > 10) {
+            $div.remove();
+            return defer.reject();
+          } else {
+            if (!res.width || !res.height) {
+              count++;
+              return (wait(100)).done(function() {
+                return oneTry();
+              });
+            } else {
+              cache[src];
+              $div.remove();
+              return defer.resolve(res);
+            }
+          }
+        };
+        return oneTry();
+      }).promise();
+    };
+    return ns.calcWH = ns.createCachedFunction(function(defer, src) {
+      return (ns.loadImg(src)).then(function($img) {
+        var img, wh;
+        img = $img[0];
+        if (naturalWHDetectable(img)) {
+          return $holderSetup().done(function() {
+            return (tryCalc($img, src)).then(function(wh) {
+              return defer.resolve(wh);
+            }, function() {
+              return defer.reject();
+            });
+          });
+        } else {
+          wh = {
+            width: img.naturalWidth,
+            height: img.naturalHeight
+          };
+          cache[src] = wh;
+          return defer.resolve(wh);
+        }
+      }, function() {
+        return defer.reject();
+      });
+    });
+  })();
+
   $.loadImg = ns.loadImg;
 
-  $.ImgLoader = ns.Facade;
+  $.ImgLoader = ns.LoaderFacade;
+
+  $.calcNaturalWH = ns.calcWH;
 
 }).call(this);

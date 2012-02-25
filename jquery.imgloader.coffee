@@ -41,6 +41,12 @@ do ->
         defer.reject $img
     .promise()
 
+# setTimeout wrapper
+wait = (time) ->
+  $.Deferred (defer) ->
+    setTimeout ->
+      defer.resolve()
+    , time
 
 # ============================================================
 # event module
@@ -119,7 +125,7 @@ class ns.BasicLoader extends ns.Event
     @items = []
 
   add: (loaderItem) ->
-    if ($.type loaderItem) == 'string'
+    if ($.type loaderItem) is 'string'
       src = loaderItem
       loaderItem = new ns.LoaderItem src
     @items.push loaderItem
@@ -153,7 +159,7 @@ class ns.ChainLoader extends ns.Event
     @_inLoadCount = 0
     @_allDoneDefer = $.Deferred()
 
-  _finished: -> @_doneCount == @_presets.length
+  _finished: -> @_doneCount is @_presets.length
   _nextLoadAllowed: -> (@_inLoadCount < @_pipesize)
   _getImgs: ->
     $($.map @_presets, (preset) -> preset.item.$img)
@@ -180,7 +186,7 @@ class ns.ChainLoader extends ns.Event
             @_doneCount++
             preset.defer.resolve $img
             @_handleNext()
-          if(i==0)
+          if(i is 0)
             done()
           else
             @_presets[i-1].defer.always -> done()
@@ -189,7 +195,7 @@ class ns.ChainLoader extends ns.Event
     @
 
   add: (loaderItem) ->
-    if ($.type loaderItem) == 'string'
+    if ($.type loaderItem) is 'string'
       src = loaderItem
       loaderItem = new ns.LoaderItem src
     preset =
@@ -214,7 +220,7 @@ class ns.ChainLoader extends ns.Event
 # ============================================================
 # facade
 
-class ns.Facade
+class ns.LoaderFacade
   
   # bind methods to loader
   methods = [ 'bind', 'trigger', 'load', 'one', 'unbind', 'add', 'kill' ]
@@ -225,7 +231,7 @@ class ns.Facade
 
     # handle without new call
     if not (@ instanceof arguments.callee)
-      return new ns.Facade(options)
+      return new ns.LoaderFacade(options)
 
     @options = o = $.extend(
       srcs: []
@@ -240,9 +246,94 @@ class ns.Facade
     $.each o.srcs, (i, src) =>
       @loader.add new ns.LoaderItem src
 
+# ============================================================
+# calcNaturalWH
+
+do ->
+
+  cache = {} # cache caliculation result
+
+  # prepare holder to caliculation
+  $holder = null
+
+  $holderSetup = ->
+    $.Deferred (defer) ->
+      $ ->
+        $holder = $('<div id="calcNaturalWH-tempholder"></div>').css
+          position: 'absolute'
+          left: '-9999px'
+          top: '-9999px'
+        $('body').append $holder
+        defer.resolve()
+    .promise()
+
+  naturalWHDetectable = (img) ->
+    if(
+      (img.naturalWidth is undefined) or
+      (img.naturalWidth is 0) or
+      (img.naturalHeight is undefined) or
+      (img.naturalHeight is 0)
+    )
+      false
+    else
+      true
+
+  # try caliculation 10 times if failed.
+  # I don't know why but this caliculation fails sometimes.
+  # delaying caliculation works well against this
+  tryCalc = ($img, src) ->
+    img = $img[0]
+    $.Deferred (defer) ->
+
+      res = {}
+
+      # prepare elements
+      $img.css(width: 'auto', height: 'auto')
+      $div = $('<div></div>').append($img)
+      $holder.append $div
+
+      count = 0
+      oneTry = ->
+        res.width = img.naturalWidth or $img.width()
+        res.height = img.naturalHeight or $img.height()
+        if(count > 10)
+          $div.remove()
+          defer.reject()
+        else
+          if (!res.width or !res.height)
+            count++
+            (wait 100).done -> oneTry()
+          else
+            cache[src]
+            $div.remove()
+            defer.resolve res
+
+      oneTry()
+
+    .promise()
+
+  # main
+  ns.calcWH = ns.createCachedFunction (defer, src) ->
+    (ns.loadImg src).then ($img) ->
+      img = $img[0]
+      if naturalWHDetectable img
+        $holderSetup().done ->
+          (tryCalc $img, src).then (wh) ->
+            defer.resolve(wh)
+          , ->
+            defer.reject()
+      else
+        wh =
+          width: img.naturalWidth
+          height: img.naturalHeight
+        cache[src] = wh
+        defer.resolve wh
+    , ->
+      defer.reject()
 
 # ============================================================
 # globalify
 
 $.loadImg = ns.loadImg
-$.ImgLoader = ns.Facade
+$.ImgLoader = ns.LoaderFacade
+$.calcNaturalWH = ns.calcWH

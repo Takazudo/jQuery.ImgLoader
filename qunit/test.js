@@ -337,7 +337,7 @@
     });
   });
 
-  test('Facade without new handling', function() {
+  test('LoaderFacade - without new handling', function() {
     var srcs;
     srcs = [1, 2, 3, 4];
     (function() {
@@ -356,7 +356,7 @@
     })();
   });
 
-  asyncTest('Facade - to BasicLoader', function() {
+  asyncTest('LoaderFacade - to BasicLoader', function() {
     var count, i, loader, srcs;
     expect(22);
     srcs = [];
@@ -381,7 +381,7 @@
     });
   });
 
-  asyncTest('Facade - to ChainLoader', function() {
+  asyncTest('LoaderFacade - to ChainLoader', function() {
     var count, i, loader, srcs;
     expect(22);
     srcs = [];
@@ -403,6 +403,50 @@
     });
     return loader.load().always(function($imgs) {
       equal($imgs.size(), 10, 'done deferred worked');
+      return start();
+    });
+  });
+
+  asyncTest('calcNaturalWH - ok', function() {
+    expect(2);
+    return ($.calcNaturalWH('imgs/1.jpg')).then(function(wh) {
+      equal(wh.width, 320, "width caliculated correctly " + wh.width);
+      return equal(wh.height, 320, "height caliculated correctly " + wh.height);
+    }, function() {
+      return ok(false, 'failed');
+    }).always(function() {
+      return start();
+    });
+  });
+
+  asyncTest('calcNaturalWH - ng', function() {
+    expect(1);
+    return ($.calcNaturalWH('nothinghere.jpg')).then(function(wh) {
+      return ok(false, 'successed unexpectedly');
+    }, function() {
+      return ok(true, 'fails when img was 404');
+    }).always(function() {
+      return start();
+    });
+  });
+
+  asyncTest('calcNaturalWH - try many at once', function() {
+    var deferreds, i, srcs;
+    expect(40);
+    srcs = [];
+    for (i = 1; i <= 10; i++) {
+      srcs.push("imgs/" + i + ".jpg");
+    }
+    for (i = 1; i <= 10; i++) {
+      srcs.push("imgs/" + i + ".jpg");
+    }
+    deferreds = $.map(srcs, function(src) {
+      return ($.calcNaturalWH(src)).then(function(wh) {
+        equal(wh.width, 320, "" + src + " width caliculated correctly " + wh.width);
+        return equal(wh.height, 320, "" + src + " height caliculated correctly " + wh.height);
+      });
+    });
+    return ($.when.apply(this, deferreds)).always(function() {
       return start();
     });
   });
