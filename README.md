@@ -1,16 +1,16 @@
 # jQuery.ImgLoader
 
-jQuery.Imgloader handles imgs' loading.
+jQuery.Imgloader handles imgs' loading.  
 Img elements are loaded progressively on the html. jQuery.ImgLoader loads imgs as background task. This triggers events when they were loaded to the browser. So, you can append the load-completed imgs to the html.
 
 ## Usage
 
 ### BasicLoader
 
-BasicLoader is a simple loader.
-This starts loading all thronw img srcs.
-You can bind 'itemload' and 'allload' event.
-'itemload' event will be fired when each imgs was loaded.
+BasicLoader is a simple loader.  
+This starts loading all thronw img srcs at once.  
+You can bind 'itemload' and 'allload' event.  
+'itemload' event will be fired when each imgs was loaded.  
 'allload' event will be fired when each imgs was loaded.
 
 ```javascript
@@ -28,7 +28,7 @@ loader.load();
 
 ### ChainLoader
 
-ChainLoader limits the number of img loading executed at once.
+ChainLoader limits the number of img loading executed at once.  
 BasicLoader sometimes gets troubled when the number of imgs were huge. It's tough work to load 100 imgs at once for the browsers. If you specify 3 as pipesize, ChainLoader doesnot loads 4 or more imgs at once. This may help you to reduce the loads to the browser, and also keeps the loading order.
 
 #### basics
@@ -50,12 +50,12 @@ loader.bind('allload', function($img){
 loader.load();
 ```
 
-The code above loads 'img1.jpg' and 'img2.jpg' at once first.
+The code above loads 'img1.jpg' and 'img2.jpg' at once first.  
 When either of them was loaded, loader start loading 'img3.jpg' after 100 millisec delay.
 
 #### handle items one by one
 
-You may want to handle each img's loading individually.
+You may want to handle each img's loading individually.  
 Then, you can use 'add' method to register single loading task. It returns jQuery deferred about loading.
 
 ```javascript
@@ -94,13 +94,15 @@ loader.kill(); // stop all!
 
 ## License
 
-Copyright (c) 2012 "Takazudo" Takeshi Takatsudo
-Licensed under the MIT license.  
+Copyright (c) 2012 "Takazudo" Takeshi Takatsudo  
+Licensed under the MIT license.
 
-# Notes
+# Misc
 
-This scirpt was developed with following things.
-https://github.com/cowboy/grunt
+This scirpt was developed with following things.  
 
-[CoffeeScript]: http://coffeescript.org/
-[grunt]: http://nodejs.org/
+ * [CoffeeScript][coffeescript]
+ * [grunt][grunt]
+
+[coffeescript]: http://coffeescript.org/ "CoffeeScript"
+[grunt]: https://github.com/cowboy/grunt "grunt"
