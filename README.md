@@ -12,7 +12,7 @@ Img elements are loaded progressively on the page. jQuery.ImgLoader loads imgs a
 
 ### single image loading
 
-$.loadImg(src) returns the deferred.  
+$.loadImg(src) returns deferred object which handles loading.  
 It will be resolved when the img's loading was complete.
 
 ```javascript
