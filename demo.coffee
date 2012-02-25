@@ -25,7 +25,7 @@ $ ->
 
   refresh = ->
     
-    if loader then loader.unbind()
+    if loader then loader.kill()
 
     $imgs.empty()
     usechain = true if $usechain.filter(':checked').val() == 'yes'

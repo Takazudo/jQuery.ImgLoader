@@ -131,6 +131,9 @@ class ns.BasicLoader extends ns.Event
         @trigger 'allload', $imgs
         defer.resolve $imgs
 
+  kill: ->
+    @
+
 class ns.ChainLoader extends ns.Event
   constructor: (@_chainsize, @_delay=0) ->
     super
@@ -187,6 +190,11 @@ class ns.ChainLoader extends ns.Event
     @_handleNext()
     @_allDoneDefer
 
+  kill: ->
+    @unbind()
+    $.each @_presets, (i, preset) ->
+      preset.item.unbind()
+    @
 
 # ============================================================
 # facade
@@ -194,7 +202,7 @@ class ns.ChainLoader extends ns.Event
 class ns.Facade
   
   do => # bind methods to loader
-    methods = [ 'bind', 'trigger', 'load', 'one', 'unbind', 'add' ]
+    methods = [ 'bind', 'trigger', 'load', 'one', 'unbind', 'add', 'kill' ]
     $.each methods, (i, method) =>
       @::[method] = (args...) -> @loader[method].apply @loader, args
 

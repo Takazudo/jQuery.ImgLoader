@@ -25,7 +25,7 @@
     loader = null;
     refresh = function() {
       var chainsize, delay, options, usechain;
-      if (loader) loader.unbind();
+      if (loader) loader.kill();
       $imgs.empty();
       if ($usechain.filter(':checked').val() === 'yes') usechain = true;
       chainsize = $chainsize.val() * 1;

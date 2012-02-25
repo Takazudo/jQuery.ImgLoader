@@ -186,6 +186,10 @@
       });
     };
 
+    BasicLoader.prototype.kill = function() {
+      return this;
+    };
+
     return BasicLoader;
 
   })(ns.Event);
@@ -277,6 +281,14 @@
       return this._allDoneDefer;
     };
 
+    ChainLoader.prototype.kill = function() {
+      this.unbind();
+      $.each(this._presets, function(i, preset) {
+        return preset.item.unbind();
+      });
+      return this;
+    };
+
     return ChainLoader;
 
   })(ns.Event);
@@ -286,7 +298,7 @@
 
     (function() {
       var methods;
-      methods = ['bind', 'trigger', 'load', 'one', 'unbind', 'add'];
+      methods = ['bind', 'trigger', 'load', 'one', 'unbind', 'add', 'kill'];
       return $.each(methods, function(i, method) {
         return Facade.prototype[method] = function() {
           var args;
