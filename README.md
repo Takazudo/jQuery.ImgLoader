@@ -3,6 +3,11 @@
 jQuery.Imgloader handles imgs' loading.  
 Img elements are loaded progressively on the html. jQuery.ImgLoader loads imgs as background task. This triggers events when they were loaded to the browser. So, you can append the load-completed imgs to the html.
 
+## demos
+
+* [http://takazudo.github.com/jQuery.ImgLoader/demo1/example.html](http://takazudo.github.com/jQuery.ImgLoader/demo1/example.html)
+* [http://takazudo.github.com/jQuery.ImgLoader/demo2/example.html](http://takazudo.github.com/jQuery.ImgLoader/demo2/example.html)
+
 ## Usage
 
 ### BasicLoader
