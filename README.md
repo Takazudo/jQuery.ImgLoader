@@ -7,10 +7,11 @@ Img elements are loaded progressively on the page. jQuery.ImgLoader loads imgs a
 
 * [http://takazudo.github.com/jQuery.ImgLoader/demo1/example.html](http://takazudo.github.com/jQuery.ImgLoader/demo1/example.html)
 * [http://takazudo.github.com/jQuery.ImgLoader/demo2/example.html](http://takazudo.github.com/jQuery.ImgLoader/demo2/example.html)
+* [http://takazudo.github.com/jQuery.ImgLoader/demo3/example.html](http://takazudo.github.com/jQuery.ImgLoader/demo3/example.html)
 
 ## Usage
 
-### single image loading
+### $.loadImg - single image loading
 
 $.loadImg(src) returns deferred object which handles loading.  
 It will be resolved when the img's loading was complete.
@@ -23,7 +24,7 @@ $.loadImg('img1.jpg').then(function($img){
 })
 ```
 
-### BasicLoader
+### $.ImgLoader - BasicLoader
 
 BasicLoader is a simple loader.  
 This starts loading all thrown srcs at once.  
@@ -44,12 +45,12 @@ loader.bind('allload', function($img){
 loader.load();
 ```
 
-### ChainLoader
+### $.ImgLoader - ChainLoader
 
 ChainLoader limits the number of img loading executed at once.  
 BasicLoader sometimes gets troubled when the number of imgs were huge. It's tough work to load 100 imgs at once for browsers. If you specify 3 as pipesize, ChainLoader doesnot loads 4 or more imgs at once. This may help you to reduce the loads to the browser, and also keeps the loading order.
 
-#### basics
+#### $.ImgLoader - basics
 
 Just throw 'pipesize' and 'delay'(optional) to $.ImgLoader.
 
@@ -71,7 +72,7 @@ loader.load();
 The code above loads 'img1.jpg' and 'img2.jpg' at once first.  
 When either of them was loaded, loader starts loading 'img3.jpg' after 100 millisec delay.
 
-#### handle items one by one
+#### $.ImgLoader - 'add' handle items one by one
 
 You may want to handle each img's loading individually.  
 Then, you can use 'add' method to register single loading task. It returns jQuery deferred about loading.
@@ -93,7 +94,7 @@ loader.add('2.jpg').then(function($img){
 loader.load();
 ```
 
-#### stop loading immediately
+#### $.ImgLoader - 'kill' stop all loading immediately
 
 Call 'kill' if you want to stop loading tasks.
 
@@ -112,6 +113,23 @@ loader.kill(); // stop all!
 
 Note: This 'kill' method is available for BasicLoader too.  
 But, BasicLoader starts imgs' loading at once. You can't stop already-started imgs' loadings to the browsers. 'kill' stops all future events about these imgs. But, background-loading cannnot be stopped. Use ChainLoader for huge amount of imgs.
+
+### $.calcNaturalWH - caliculate natural width / heigth
+
+$.calcNaturalWH caliculates img's natural width / height.  
+Newer browsers have naturalWidth/naturalHeight feature. With these, we can get the img's original width/height. But these features are sometimes difficult to handle because it fails and returns zero before the img was not load-completed.  
+$.calcNaturalWH does preload on background then returns the values you want.  
+This also works on old browsers which do not have naturalWidth/naturalHeight feature using tricky way.
+
+```javascript
+$.calcNaturalWH('../imgs/1.jpg').then(function(wh, $img){
+  alert(wh.width); // 320
+  alert(wh.height); // 320
+  $('#somewhere').append($img);
+}, function(){
+  alert('failed because of 404 or something');
+});
+```
 
 ## Depends
 
