@@ -110,8 +110,8 @@ loader.load();
 loader.kill(); // stop all!
 ```
 
-This 'kill' method is available for BasicLoader too.  
-But, BasicLoader starts imgs' loading at once. You can't stop already-started imgs' loadings to the browsers. 'kill' stops the all future events about the imgs. But, background-loading cannnot be stopped. Use ChainLoader for huge amount of imgs.
+Note: This 'kill' method is available for BasicLoader too.  
+But, BasicLoader starts imgs' loading at once. You can't stop already-started imgs' loadings to the browsers. 'kill' stops all future events about these imgs. But, background-loading cannnot be stopped. Use ChainLoader for huge amount of imgs.
 
 ## Depends
 
