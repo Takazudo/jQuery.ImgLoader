@@ -1,4 +1,4 @@
-/*! jQuery.ImgLoader - v0.1.0 -  2/26/2012
+/*! jQuery.ImgLoader - v0.1.0 -  3/29/2012
  * https://github.com/Takazudo/jQuery.ImgLoader
  * Copyright (c) 2012 "Takazudo" Takeshi Takatsudo; Licensed MIT */
 
