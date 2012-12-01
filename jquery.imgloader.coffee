@@ -31,7 +31,7 @@
       defer.xhr = xhr
       xhr.on 'progress', ->
         defer.notify xhr.currentLoadedInfo()
-      xhr.on 'loadend', ->
+      xhr.on 'loadend timeout', ->
         img.src = src
       xhr.send()
     else

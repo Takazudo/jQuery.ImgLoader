@@ -1,7 +1,10 @@
 # jQuery.ImgLoader
 
 jQuery.Imgloader handles multiple imgs' preload.  
+
 Img elements are loaded progressively on the page. jQuery.ImgLoader loads imgs as background task. This triggers events when each imgs' loading was completed. You can append the load-completed imgs to the page with this.
+
+You can also get img loading progress ratio using xhr2.
 
 ## demos
 
@@ -28,18 +31,24 @@ $.loadImg('img1.jpg').then(function($img){
 
 BasicLoader is a simple loader.  
 This starts preload about all thrown srcs at once.  
-You can bind 'itemload' and 'allload' event.  
+You can bind 'progress'/'itemload'/'allload' event.  
 'itemload' event will be fired when each img was loaded.  
+'progress' event will be fired when xhr2 was progressed (or on itemload as fallback).  
 'allload' event will be fired when all imgs were loaded.
 
 ```javascript
 var loader = $.ImgLoader({
-  srcs: [ 'img1.jpg', 'img2.jpg', 'img3.jpg', 'img4.jpg' ]
+  srcs: [ 'img1.jpg', 'img2.jpg', 'img3.jpg', 'img4.jpg' ],
+  useXHR2: true, // use xhr2 if the browser supports it (optional) (default: true)
+  timeout: 20000 // xhr2 timeout (optional) (default: 10000)
 });
-loader.bind('itemload', function($img){
+loader.on('progress', function(progressInfo){
+  console.log(progressInfo.loadedRatio); // 0.45
+});
+loader.on('itemload', function($img){
   $('#somewhere').append($img);
 });
-loader.bind('allload', function($img){
+loader.on('allload', function($img){
   alert('everything loaded!');
 });
 loader.load();
@@ -57,13 +66,18 @@ Just throw 'pipesize' and 'delay'(optional) to $.ImgLoader.
 ```javascript
 var loader = $.ImgLoader({
   srcs: [ 'img1.jpg', 'img2.jpg', 'img3.jpg', 'img4.jpg' ],
-  pipesize: 2,
-  delay: 100 // optional
+  pipesize: 2, // max connections (optional)
+  delay: 100, // interval between each img loads (optional)
+  useXHR2: true, // use xhr2 if the browser supports it (optional) (default: true)
+  timeout: 20000 // xhr2 timeout (optional) (default: 10000)
 });
-loader.bind('itemload', function($img){
+loader.on('progress', function(progressInfo){
+  console.log(progressInfo.loadedRatio); // 0.45
+});
+loader.on('itemload', function($img){
   $('#somewhere').append($img);
 });
-loader.bind('allload', function($img){
+loader.on('allload', function($img){
   alert('everything loaded!');
 });
 loader.load();
@@ -103,7 +117,7 @@ var loader = $.ImgLoader({
   srcs: [ 'img1.jpg', 'img2.jpg', 'img3.jpg', 'img4.jpg' ],
   pipesize: 2
 });
-loader.bind('allload', function($img){
+loader.on('allload', function($img){
   alert('everything loaded! but this will not be fired');
 });
 
@@ -133,7 +147,7 @@ $.calcNaturalWH('../imgs/1.jpg').then(function(wh, $img){
 
 ## Depends
 
-jQuery 1.7.1
+jQuery 1.8.3
 
 ## Browsers
 

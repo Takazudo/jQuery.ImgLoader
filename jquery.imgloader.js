@@ -47,7 +47,7 @@
         xhr.on('progress', function() {
           return defer.notify(xhr.currentLoadedInfo());
         });
-        xhr.on('loadend', function() {
+        xhr.on('loadend timeout', function() {
           return img.src = src;
         });
         return xhr.send();
