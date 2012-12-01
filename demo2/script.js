@@ -72,7 +72,7 @@
       options.srcs = randomSrcs();
       loader = $.ImgLoader(options);
       loader.on('progress', function(progressInfo) {
-        return notify("progress fired: " + (Math.floor(progressInfo.loadedRatio * 100)) + "%");
+        return notify("progress fired: " + (Math.floor(progressInfo.loadedRatio * 1000) / 10) + "%");
       });
       loader.on('itemload', function($img) {
         $imgs.append($img);
