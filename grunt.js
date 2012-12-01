@@ -39,6 +39,6 @@ module.exports = function(grunt){
     }
   });
 
-  grunt.registerTask('default', 'coffee concat notifyOK');
+  grunt.registerTask('default', 'coffee concat uglify notifyOK');
 
 };
