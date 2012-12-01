@@ -70,13 +70,13 @@
   asyncTest('fetchImg - basics', function() {
     expect(4);
     return $.when((ns.fetchImg('imgs/1.jpg')).done(function($img) {
-      return equal($img.size(), 1, '1.jpg loaded');
+      return equal($img.length, 1, '1.jpg loaded');
     }, (ns.fetchImg('imgs/2.jpg')).done(function($img) {
-      return equal($img.size(), 1, '2.jpg loaded');
+      return equal($img.length, 1, '2.jpg loaded');
     }, (ns.fetchImg('imgs/3.jpg')).done(function($img) {
-      return equal($img.size(), 1, '3.jpg loaded');
+      return equal($img.length, 1, '3.jpg loaded');
     }, (ns.fetchImg('imgs/4.jpg')).done(function($img) {
-      return equal($img.size(), 1, '4.jpg loaded');
+      return equal($img.length, 1, '4.jpg loaded');
     }))))).always(function() {
       return wait().done(start);
     });
@@ -88,7 +88,7 @@
       return ok(false, 'img was not loaded but it saied ok');
     }, function($img) {
       ok(true, 'deferred returned error');
-      return equal($img.size(), 1, 'returned error img');
+      return equal($img.length, 1, 'returned error img');
     })).always(function() {
       return start();
     });
@@ -176,45 +176,84 @@
   });
 
   asyncTest('BasicLoader - basics', function() {
-    var count, i, loader, _i;
-    expect(22);
+    var i, lastProgressLoadedFileCount, loader, _i;
     loader = new ns.BasicLoader;
-    count = -1;
-    loader.bind('itemload', function($img, i) {
-      equal($img.size(), 1, ($img.attr('src')) + ' was loaded');
-      equal(i, count + 1, "counter " + i + " was thrown");
-      return count++;
+    lastProgressLoadedFileCount = 0;
+    loader.one('progress', function(progressInfo) {
+      var p;
+      p = progressInfo;
+      return equal(p.totalFileCount, 10, "totalFileCount on progress: " + p.totalFileCount);
     });
-    loader.bind('allload', function($imgs) {
-      return equal($imgs.size(), 10, 'all imgs loaded');
+    loader.bind('progress', function(progressInfo) {
+      var p, _ref;
+      p = progressInfo;
+      ok((0 <= (_ref = p.loadedFileCount) && _ref <= 10), "loadedFileCount on progress: " + p.loadedFileCount);
+      lastProgressLoadedFileCount = p.loadedFileCount;
+      if (lastProgressLoadedFileCount < p.loadedFileCount) {
+        return ok(false, 'loaded count bugged');
+      }
+    });
+    loader.bind('itemload', function($img, progressInfo) {
+      var p;
+      p = progressInfo;
+      equal($img.length, 1, ($img.attr('src')) + ' was loaded');
+      lastProgressLoadedFileCount = p.loadedFileCount;
+      if (lastProgressLoadedFileCount < p.loadedFileCount) {
+        return ok(false, 'loaded count bugged');
+      }
+    });
+    loader.bind('allload', function($imgs, progressInfo) {
+      equal($imgs.length, 10, 'all imgs loaded');
+      return equal(progressInfo.loadedRatio, 1, 'loadedRatio 1 on allload');
     });
     for (i = _i = 1; _i <= 10; i = ++_i) {
-      loader.add(new ns.LoaderItem("imgs/" + i + ".jpg"));
+      loader.add("imgs/" + i + ".jpg?" + (Math.random()));
     }
-    return loader.load().always(function($imgs) {
-      equal($imgs.size(), 10, 'done deferred worked');
+    return loader.load().always(function($imgs, progressInfo) {
+      equal($imgs.length, 10, 'done deferred worked');
       return start();
     });
   });
 
-  asyncTest('BasicLoader - add - as string', function() {
-    var count, i, loader, _i;
-    expect(22);
-    loader = new ns.BasicLoader;
-    count = -1;
-    loader.bind('itemload', function($img, i) {
-      equal($img.size(), 1, ($img.attr('src')) + ' was loaded');
-      equal(i, count + 1, "counter " + i + " was thrown");
-      return count++;
+  asyncTest('BasicLoader - no xhr2', function() {
+    var i, lastProgressLoadedFileCount, loader, progressEventOccured, _i;
+    loader = new ns.BasicLoader(false);
+    lastProgressLoadedFileCount = 0;
+    progressEventOccured = 0;
+    loader.one('progress', function(progressInfo) {
+      var p;
+      p = progressInfo;
+      return equal(p.totalFileCount, 10, "totalFileCount on progress: " + p.totalFileCount);
     });
-    loader.bind('allload', function($imgs) {
-      return equal($imgs.size(), 10, 'all imgs loaded');
+    loader.bind('progress', function(progressInfo) {
+      var p, _ref;
+      p = progressInfo;
+      ok((0 <= (_ref = p.loadedFileCount) && _ref <= 10), "loadedFileCount on progress: " + p.loadedFileCount);
+      lastProgressLoadedFileCount = p.loadedFileCount;
+      progressEventOccured += 1;
+      if (lastProgressLoadedFileCount < p.loadedFileCount) {
+        return ok(false, 'loaded count bugged');
+      }
+    });
+    loader.bind('itemload', function($img, progressInfo) {
+      var p;
+      p = progressInfo;
+      equal($img.length, 1, ($img.attr('src')) + ' was loaded');
+      lastProgressLoadedFileCount = p.loadedFileCount;
+      if (lastProgressLoadedFileCount < p.loadedFileCount) {
+        return ok(false, 'loaded count bugged');
+      }
+    });
+    loader.bind('allload', function($imgs, progressInfo) {
+      equal($imgs.length, 10, 'all imgs loaded');
+      return equal(progressInfo.loadedRatio, 1, 'loadedRatio 1 on allload');
     });
     for (i = _i = 1; _i <= 10; i = ++_i) {
-      loader.add("imgs/" + i + ".jpg");
+      loader.add("imgs/" + i + ".jpg?" + (Math.random()));
     }
-    return loader.load().always(function($imgs) {
-      equal($imgs.size(), 10, 'done deferred worked');
+    return loader.load().always(function($imgs, progressInfo) {
+      equal(progressEventOccured, 11, 'how many times progress event occured');
+      equal($imgs.length, 10, 'done deferred worked');
       return start();
     });
   });
@@ -231,7 +270,7 @@
       return ok(false, 'allload fired');
     });
     for (i = _i = 1; _i <= 100; i = ++_i) {
-      loader.add(new ns.LoaderItem("imgs/" + i + ".jpg"));
+      loader.add("imgs/" + i + ".jpg?" + (Math.random()));
     }
     loader.bind('kill', function() {
       var count_killedTiming;
@@ -248,46 +287,87 @@
     });
   });
 
-  asyncTest('ChainLoader', function() {
-    var count, i, loader, _i;
-    expect(22);
+  asyncTest('ChainLoader - basics', function() {
+    var i, lastProgressLoadedFileCount, loader, progressEventOccured, _i;
     loader = new ns.ChainLoader(3);
-    count = -1;
-    loader.bind('itemload', function($img, i) {
-      equal($img.size(), 1, ($img.attr('src')) + ' was loaded');
-      equal(i, count + 1, "counter " + i + " was thrown");
-      return count++;
+    lastProgressLoadedFileCount = 0;
+    progressEventOccured = 0;
+    loader.one('progress', function(progressInfo) {
+      var p;
+      p = progressInfo;
+      return equal(p.totalFileCount, 10, "totalFileCount on progress: " + p.totalFileCount);
     });
-    loader.bind('allload', function($imgs) {
-      return equal($imgs.size(), 10, 'all imgs loaded');
+    loader.on('progress', function(progressInfo) {
+      var p, _ref;
+      p = progressInfo;
+      ok((0 <= (_ref = p.loadedFileCount) && _ref <= 10), "loadedFileCount on progress: " + p.loadedFileCount);
+      lastProgressLoadedFileCount = p.loadedFileCount;
+      progressEventOccured += 1;
+      if (lastProgressLoadedFileCount < p.loadedFileCount) {
+        return ok(false, 'loaded count bugged');
+      }
+    });
+    loader.on('itemload', function($img, progressInfo) {
+      var p;
+      p = progressInfo;
+      equal($img.length, 1, ($img.attr('src')) + ' was loaded');
+      lastProgressLoadedFileCount = p.loadedFileCount;
+      if (lastProgressLoadedFileCount < p.loadedFileCount) {
+        return ok(false, 'loaded count bugged');
+      }
+    });
+    loader.on('allload', function($imgs, progressInfo) {
+      equal($imgs.length, 10, 'all imgs loaded');
+      return equal(progressInfo.loadedRatio, 1, 'loadedRatio 1 on allload');
     });
     for (i = _i = 1; _i <= 10; i = ++_i) {
-      loader.add(new ns.LoaderItem("imgs/" + i + ".jpg"));
+      loader.add("imgs/" + i + ".jpg?" + (Math.random()));
     }
     return loader.load().always(function($imgs) {
-      equal($imgs.size(), 10, 'done deferred worked');
+      equal($imgs.length, 10, 'done deferred worked');
       return start();
     });
   });
 
-  asyncTest('ChainLoader - add - as string', function() {
-    var count, i, loader, _i;
-    expect(22);
-    loader = new ns.ChainLoader(3);
-    count = -1;
-    loader.bind('itemload', function($img, i) {
-      equal($img.size(), 1, ($img.attr('src')) + ' was loaded');
-      equal(i, count + 1, "counter " + i + " was thrown");
-      return count++;
+  asyncTest('ChainLoader - no xhr2', function() {
+    var i, lastProgressLoadedFileCount, loader, progressEventOccured, _i;
+    loader = new ns.ChainLoader(3, 0, false);
+    lastProgressLoadedFileCount = 0;
+    progressEventOccured = 0;
+    loader.one('progress', function(progressInfo) {
+      var p;
+      p = progressInfo;
+      return equal(p.totalFileCount, 10, "totalFileCount on progress: " + p.totalFileCount);
     });
-    loader.bind('allload', function($imgs) {
-      return equal($imgs.size(), 10, 'all imgs loaded');
+    loader.on('progress', function(progressInfo) {
+      var p, _ref;
+      p = progressInfo;
+      ok((0 <= (_ref = p.loadedFileCount) && _ref <= 10), "loadedFileCount on progress: " + p.loadedFileCount);
+      lastProgressLoadedFileCount = p.loadedFileCount;
+      progressEventOccured += 1;
+      if (lastProgressLoadedFileCount < p.loadedFileCount) {
+        return ok(false, 'loaded count bugged');
+      }
+    });
+    loader.on('itemload', function($img, progressInfo) {
+      var p;
+      p = progressInfo;
+      equal($img.length, 1, ($img.attr('src')) + ' was loaded');
+      lastProgressLoadedFileCount = p.loadedFileCount;
+      if (lastProgressLoadedFileCount < p.loadedFileCount) {
+        return ok(false, 'loaded count bugged');
+      }
+    });
+    loader.on('allload', function($imgs, progressInfo) {
+      equal($imgs.length, 10, 'all imgs loaded');
+      return equal(progressInfo.loadedRatio, 1, 'loadedRatio 1 on allload');
     });
     for (i = _i = 1; _i <= 10; i = ++_i) {
-      loader.add("imgs/" + i + ".jpg");
+      loader.add("imgs/" + i + ".jpg?" + (Math.random()));
     }
     return loader.load().always(function($imgs) {
-      equal($imgs.size(), 10, 'done deferred worked');
+      equal(progressEventOccured, 11, 'how many times progress event occured');
+      equal($imgs.length, 10, 'done deferred worked');
       return start();
     });
   });
@@ -321,7 +401,7 @@
       return ok(false, 'allload fired');
     });
     for (i = _i = 1; _i <= 100; i = ++_i) {
-      loader.add(new ns.LoaderItem("imgs/" + i + ".jpg"));
+      loader.add("imgs/" + i + ".jpg?" + (Math.random()));
     }
     loader.bind('kill', function() {
       var count_killedTiming;
@@ -358,52 +438,46 @@
   });
 
   asyncTest('LoaderFacade - to BasicLoader', function() {
-    var count, i, loader, srcs, _i;
-    expect(22);
+    var i, loader, srcs, _i;
+    expect(12);
     srcs = [];
     for (i = _i = 1; _i <= 10; i = ++_i) {
-      srcs.push("imgs/" + i + ".jpg");
+      srcs.push("imgs/" + i + ".jpg?" + (Math.random()));
     }
     loader = new $.ImgLoader({
       srcs: srcs
     });
-    count = -1;
-    loader.bind('itemload', function($img, i) {
-      equal($img.size(), 1, ($img.attr('src')) + ' was loaded');
-      equal(i, count + 1, "counter " + i + " was thrown");
-      return count++;
+    loader.bind('itemload', function($img, p) {
+      return equal($img.length, 1, ($img.attr('src')) + ' was loaded');
     });
     loader.bind('allload', function($imgs) {
-      return equal($imgs.size(), 10, 'all imgs loaded');
+      return equal($imgs.length, 10, 'all imgs loaded');
     });
     return loader.load().always(function($imgs) {
-      equal($imgs.size(), 10, 'done deferred worked');
+      equal($imgs.length, 10, 'done deferred worked');
       return start();
     });
   });
 
   asyncTest('LoaderFacade - to ChainLoader', function() {
-    var count, i, loader, srcs, _i;
-    expect(22);
+    var i, loader, srcs, _i;
+    expect(12);
     srcs = [];
     for (i = _i = 1; _i <= 10; i = ++_i) {
-      srcs.push("imgs/" + i + ".jpg");
+      srcs.push("imgs/" + i + ".jpg?" + (Math.random()));
     }
     loader = new $.ImgLoader({
       srcs: srcs,
       pipesize: 5
     });
-    count = -1;
     loader.bind('itemload', function($img, i) {
-      equal($img.size(), 1, ($img.attr('src')) + ' was loaded');
-      equal(i, count + 1, "counter " + i + " was thrown");
-      return count++;
+      return equal($img.length, 1, ($img.attr('src')) + ' was loaded');
     });
     loader.bind('allload', function($imgs) {
-      return equal($imgs.size(), 10, 'all imgs loaded');
+      return equal($imgs.length, 10, 'all imgs loaded');
     });
     return loader.load().always(function($imgs) {
-      equal($imgs.size(), 10, 'done deferred worked');
+      equal($imgs.length, 10, 'done deferred worked');
       return start();
     });
   });

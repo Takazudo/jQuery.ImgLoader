@@ -1,4 +1,4 @@
-/*! jQuery.ImgLoader - v0.1.0 -  12/1/2012
+/*! jQuery.ImgLoader - v0.1.0 -  12/2/2012
  * https://github.com/Takazudo/jQuery.ImgLoader
  * Copyright (c) 2012 "Takazudo" Takeshi Takatsudo; Licensed MIT */
 
@@ -11,20 +11,22 @@
   (function($, win, doc) {
     var ns, wait;
     ns = $.ImgLoaderNs = {};
+    ns.support = {};
+    ns.support.xhr2 = win.XMLHttpRequestProgressEvent != null;
     ns.createCachedFunction = function(requestedFunction) {
       var cache;
       cache = {};
-      return function(key) {
+      return function(key, options) {
         if (!cache[key]) {
           cache[key] = $.Deferred(function(defer) {
-            return requestedFunction(defer, key);
+            return requestedFunction(defer, key, options);
           }).promise();
         }
         return cache[key];
       };
     };
-    ns.fetchImg = ns.createCachedFunction(function(defer, src) {
-      var $img, cleanUp, img;
+    ns.fetchImg = ns.createCachedFunction(function(defer, src, options) {
+      var $img, cleanUp, img, xhr;
       img = new Image;
       cleanUp = function() {
         return img.onload = img.onerror = null;
@@ -37,14 +39,33 @@
       img.onerror = function() {
         return defer.reject($img);
       };
-      return img.src = src;
+      if (ns.support.xhr2 && (options != null ? options.useXHR2 : void 0)) {
+        xhr = new ns.Xhr2Request(src, {
+          timeout: options.timeout
+        });
+        defer.xhr = xhr;
+        xhr.on('progress', function() {
+          return defer.notify(xhr.currentLoadedInfo());
+        });
+        xhr.on('loadend', function() {
+          return img.src = src;
+        });
+        return xhr.send();
+      } else {
+        return img.src = src;
+      }
     });
     (function() {
       var cache;
       cache = {};
-      return ns.loadImg = function(src) {
+      return ns.loadImg = function(src, useXHR2, timeout) {
         return $.Deferred(function(defer) {
-          return (ns.fetchImg(src)).then(function($img) {
+          return (ns.fetchImg(src, {
+            useXHR2: useXHR2,
+            timeout: timeout
+          })).progress(function(loadedInfo) {
+            return defer.notify(loadedInfo);
+          }).then(function($img) {
             var $cachedImg, $cloned;
             if (!cache[src]) {
               cache[src] = $img;
@@ -72,7 +93,7 @@
         this._callbacks = {};
       }
 
-      Event.prototype.bind = function(ev, callback) {
+      Event.prototype.on = function(ev, callback) {
         var evs, name, _base, _i, _len;
         evs = ev.split(' ');
         for (_i = 0, _len = evs.length; _i < _len; _i++) {
@@ -84,8 +105,8 @@
       };
 
       Event.prototype.one = function(ev, callback) {
-        return this.bind(ev, function() {
-          this.unbind(ev, arguments.callee);
+        return this.on(ev, function() {
+          this.off(ev, arguments.callee);
           return callback.apply(this, arguments);
         });
       };
@@ -107,7 +128,7 @@
         return this;
       };
 
-      Event.prototype.unbind = function(ev, callback) {
+      Event.prototype.off = function(ev, callback) {
         var cb, i, list, _i, _len, _ref;
         if (!ev) {
           this._callbacks = {};
@@ -134,22 +155,89 @@
         return this;
       };
 
+      Event.prototype.bind = function() {
+        return this.on.apply(this, arguments);
+      };
+
+      Event.prototype.unbind = function() {
+        return this.off.apply(this, arguments);
+      };
+
       return Event;
 
     })();
+    ns.Xhr2Request = (function(_super) {
+
+      __extends(Xhr2Request, _super);
+
+      function Xhr2Request(url, options) {
+        this.url = url;
+        Xhr2Request.__super__.constructor.apply(this, arguments);
+        this.options = $.extend({
+          timeout: 10000
+        }, options);
+        this._prepare();
+      }
+
+      Xhr2Request.prototype._prepare = function() {
+        var gotAnyProgress,
+          _this = this;
+        gotAnyProgress = false;
+        this._request = new XMLHttpRequest;
+        this._request.open('GET', this.url);
+        this._request.timeout = this.options.timeout;
+        this._request.onloadend = function() {
+          return _this.trigger('loadend');
+        };
+        this._request.onprogress = function(e) {
+          if (!gotAnyProgress) {
+            gotAnyProgress = true;
+            _this.totalSize = e.totalSize;
+            _this.trigger('firstprogress');
+          }
+          _this.loadedSize = e.loaded;
+          _this.loadedRatio = _this.loadedSize / _this.totalSize;
+          return _this.trigger('progress');
+        };
+        this._request.ontimeout = function() {
+          return _this.options.timeout;
+        };
+        return this;
+      };
+
+      Xhr2Request.prototype.currentLoadedInfo = function() {
+        return {
+          totalSize: this.totalSize,
+          loadedSize: this.loadedSize,
+          loadedRatio: this.loadedRatio
+        };
+      };
+
+      Xhr2Request.prototype.send = function() {
+        this._request.send();
+        return this;
+      };
+
+      return Xhr2Request;
+
+    })(ns.Event);
     ns.LoaderItem = (function(_super) {
 
       __extends(LoaderItem, _super);
 
-      function LoaderItem(src) {
+      function LoaderItem(src, _useXHR2, _timeout) {
         this.src = src;
+        this._useXHR2 = _useXHR2 != null ? _useXHR2 : true;
+        this._timeout = _timeout != null ? _timeout : 10000;
         LoaderItem.__super__.constructor.apply(this, arguments);
       }
 
       LoaderItem.prototype.load = function() {
         var _this = this;
         return $.Deferred(function(defer) {
-          return (ns.loadImg(_this.src)).pipe(function($img) {
+          return (ns.loadImg(_this.src, _this._useXHR2, _this._timeout)).progress(function(loadedInfo) {
+            return _this.trigger('progress', loadedInfo);
+          }).then(function($img) {
             _this.$img = $img;
             _this.trigger('success', _this.$img);
             _this.trigger('complete', _this.$img);
@@ -160,17 +248,55 @@
             _this.trigger('complete', _this.$img);
             return defer.reject(_this.$img);
           });
-        }).promise();
+        });
       };
 
       return LoaderItem;
+
+    })(ns.Event);
+    ns.AbstractLoader = (function(_super) {
+
+      __extends(AbstractLoader, _super);
+
+      function AbstractLoader() {
+        AbstractLoader.__super__.constructor.apply(this, arguments);
+      }
+
+      AbstractLoader.prototype._prepareProgressInfo = function() {
+        var items, l, p;
+        items = this.items || this._presets;
+        l = items.length;
+        this.progressInfo = p = {
+          loadedFileCount: 0,
+          totalFileCount: l,
+          loadedRatio: 0
+        };
+        this.ratioPerItem = 1 / l;
+        return this;
+      };
+
+      AbstractLoader.prototype._updateProgressInfo = function(item, itemLoadedInfo) {
+        var itemCurrentLoadedRatio, p;
+        p = this.progressInfo;
+        itemCurrentLoadedRatio = itemLoadedInfo.loadedRatio * this.ratioPerItem;
+        p.loadedRatio = p.loadedRatio + itemCurrentLoadedRatio - (item.lastLoadedRatio || 0);
+        if (p.loadedRatio > 1) {
+          p.loadedRatio = 1;
+        }
+        item.lastLoadedRatio = itemCurrentLoadedRatio;
+        return this;
+      };
+
+      return AbstractLoader;
 
     })(ns.Event);
     ns.BasicLoader = (function(_super) {
 
       __extends(BasicLoader, _super);
 
-      function BasicLoader() {
+      function BasicLoader(_useXHR2, _timeout) {
+        this._useXHR2 = _useXHR2 != null ? _useXHR2 : true;
+        this._timeout = _timeout != null ? _timeout : 10000;
         BasicLoader.__super__.constructor.apply(this, arguments);
         this.items = [];
       }
@@ -179,61 +305,77 @@
         var src;
         if (($.type(loaderItem)) === 'string') {
           src = loaderItem;
-          loaderItem = new ns.LoaderItem(src);
+          loaderItem = new ns.LoaderItem(src, this._useXHR2, this._timeout);
         }
         this.items.push(loaderItem);
         return loaderItem;
       };
 
       BasicLoader.prototype.load = function() {
-        var count, laodDeferreds,
+        var loadDeferreds, p,
           _this = this;
-        count = 0;
-        laodDeferreds = $.map(this.items, function(item) {
-          return item.bind('complete', function($img) {
-            _this.trigger('itemload', $img, count);
-            return count++;
-          }).load();
+        this._prepareProgressInfo();
+        p = this.progressInfo;
+        loadDeferreds = $.map(this.items, function(item) {
+          item.on('progress', function(loadedInfo) {
+            _this._updateProgressInfo(item, loadedInfo);
+            return _this.trigger('progress', p);
+          });
+          item.on('complete', function($img) {
+            p.loadedFileCount += 1;
+            if (!(ns.support.xhr2 && _this._useXHR2)) {
+              p.loadedRatio = p.loadedFileCount / p.totalFileCount;
+              _this.trigger('progress', p);
+            }
+            return _this.trigger('itemload', $img, p);
+          });
+          return item.load();
         });
         return $.Deferred(function(defer) {
-          return ($.when.apply(_this, laodDeferreds)).always(function() {
+          return ($.when.apply(_this, loadDeferreds)).always(function() {
             var $imgs, imgs;
             imgs = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
             $imgs = $(imgs);
-            _this.trigger('allload', $imgs);
-            return defer.resolve($imgs);
+            p.loadedRatio = 1;
+            _this.trigger('progress', p);
+            _this.trigger('allload', $imgs, p);
+            return defer.resolve($imgs, p);
           });
-        });
+        }).promise();
       };
 
       BasicLoader.prototype.kill = function() {
-        $.each(this.items, function(i, item) {
-          return item.unbind();
-        });
+        var item, _i, _len, _ref;
+        _ref = this.items;
+        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+          item = _ref[_i];
+          item.off();
+        }
         this.trigger('kill');
-        this.unbind();
+        this.off();
         return this;
       };
 
       return BasicLoader;
 
-    })(ns.Event);
+    })(ns.AbstractLoader);
     ns.ChainLoader = (function(_super) {
 
       __extends(ChainLoader, _super);
 
-      function ChainLoader(_pipesize, _delay) {
+      function ChainLoader(_pipesize, _delay, _useXHR2, _timeout) {
         this._pipesize = _pipesize;
         this._delay = _delay != null ? _delay : 0;
+        this._useXHR2 = _useXHR2;
+        this._timeout = _timeout;
         ChainLoader.__super__.constructor.apply(this, arguments);
         this._presets = [];
-        this._doneCount = 0;
         this._inLoadCount = 0;
         this._allDoneDefer = $.Deferred();
       }
 
       ChainLoader.prototype._finished = function() {
-        return this._doneCount === this._presets.length;
+        return this.progressInfo.loadedFileCount === this._presets.length;
       };
 
       ChainLoader.prototype._nextLoadAllowed = function() {
@@ -247,48 +389,60 @@
       };
 
       ChainLoader.prototype._handleNext = function() {
-        var $imgs,
+        var $imgs, p,
           _this = this;
+        p = this.progressInfo;
         if (this._finished()) {
           if (this._allloadFired) {
             return this;
           }
           this._allloadFired = true;
           $imgs = this._getImgs();
-          this.trigger('allload', $imgs);
+          this.trigger('progress', p);
+          this.trigger('allload', $imgs, p);
           this._allDoneDefer.resolve($imgs);
           return this;
         }
         $.each(this._presets, function(i, preset) {
+          var item;
+          item = preset.item;
           if (preset.started) {
             return true;
           }
           if (!_this._nextLoadAllowed()) {
             return false;
           }
-          _this._inLoadCount++;
+          _this._inLoadCount += 1;
           preset.started = true;
-          preset.item.one('complete', function($img) {
-            preset.done = true;
-            return setTimeout(function() {
-              var done;
-              done = function() {
-                _this.trigger('itemload', $img, _this._doneCount);
-                _this._inLoadCount--;
-                _this._doneCount++;
-                preset.defer.resolve($img);
-                return _this._handleNext();
-              };
-              if (i === 0) {
-                return done();
-              } else {
-                return _this._presets[i - 1].defer.always(function() {
-                  return done();
-                });
-              }
-            }, _this._delay);
+          item.on('progress', function(loadedInfo) {
+            _this._updateProgressInfo(item, loadedInfo);
+            return _this.trigger('progress', p);
           });
-          return preset.item.load();
+          item.on('complete', function($img) {
+            var done;
+            preset.done = true;
+            done = function() {
+              p.loadedFileCount += 1;
+              _this._inLoadCount -= 1;
+              if (!(ns.support.xhr2 && _this._useXHR2)) {
+                p.loadedRatio = p.loadedFileCount / p.totalFileCount;
+                _this.trigger('progress', p);
+              }
+              _this.trigger('itemload', $img, p);
+              preset.defer.resolve($img);
+              return (wait(_this._delay)).done(function() {
+                return _this._handleNext();
+              });
+            };
+            if (i === 0) {
+              return done();
+            } else {
+              return _this._presets[i - 1].defer.always(function() {
+                return done();
+              });
+            }
+          });
+          return item.load();
         });
         return this;
       };
@@ -297,7 +451,7 @@
         var preset, src;
         if (($.type(loaderItem)) === 'string') {
           src = loaderItem;
-          loaderItem = new ns.LoaderItem(src);
+          loaderItem = new ns.LoaderItem(src, this._useXHR2, this._timeout);
         }
         preset = {
           item: loaderItem,
@@ -310,55 +464,66 @@
       };
 
       ChainLoader.prototype.load = function() {
+        this._prepareProgressInfo();
         this._handleNext();
         return this._allDoneDefer;
       };
 
       ChainLoader.prototype.kill = function() {
-        $.each(this._presets, function(i, preset) {
-          return preset.item.unbind();
-        });
+        var preset, _i, _len, _ref;
+        _ref = this._presets;
+        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+          preset = _ref[_i];
+          preset.item.off();
+        }
         this.trigger('kill');
-        this.unbind();
+        this.off();
         return this;
       };
 
       return ChainLoader;
 
-    })(ns.Event);
+    })(ns.AbstractLoader);
     ns.LoaderFacade = (function() {
-      var methods,
+      var method, methods, _fn, _i, _len,
         _this = this;
 
-      methods = ['bind', 'trigger', 'load', 'one', 'unbind', 'add', 'kill'];
+      methods = ['bind', 'trigger', 'on', 'off', 'load', 'one', 'unbind', 'add', 'kill'];
 
-      $.each(methods, function(i, method) {
+      _fn = function(method) {
         return LoaderFacade.prototype[method] = function() {
           var args;
           args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
           return this.loader[method].apply(this.loader, args);
         };
-      });
+      };
+      for (_i = 0, _len = methods.length; _i < _len; _i++) {
+        method = methods[_i];
+        _fn(method);
+      }
 
       function LoaderFacade(options) {
-        var o,
-          _this = this;
+        var o, src, _j, _len1, _ref;
         if (!(this instanceof arguments.callee)) {
           return new ns.LoaderFacade(options);
         }
         this.options = o = $.extend({
           srcs: [],
           pipesize: 0,
-          delay: 100
+          delay: 100,
+          timeout: 10000,
+          useXHR2: true
         }, options);
         if (o.pipesize) {
-          this.loader = new ns.ChainLoader(o.pipesize, o.delay);
+          this.loader = new ns.ChainLoader(o.pipesize, o.delay, o.useXHR2, o.timeout);
         } else {
-          this.loader = new ns.BasicLoader;
+          this.loader = new ns.BasicLoader(o.useXHR2, o.timeout);
         }
-        $.each(o.srcs, function(i, src) {
-          return _this.loader.add(new ns.LoaderItem(src));
-        });
+        _ref = o.srcs;
+        for (_j = 0, _len1 = _ref.length; _j < _len1; _j++) {
+          src = _ref[_j];
+          this.loader.add(src);
+        }
       }
 
       return LoaderFacade;
@@ -382,7 +547,7 @@
         }).promise();
       };
       naturalWHDetectable = function(img) {
-        if ((img.naturalWidth === void 0) || (img.naturalWidth === 0) || (img.naturalHeight === void 0) || (img.naturalHeight === 0)) {
+        if ((!(img.naturalWidth != null)) || (img.naturalWidth === 0) || (!(img.naturalHeight != null)) || (img.naturalHeight === 0)) {
           return false;
         } else {
           return true;

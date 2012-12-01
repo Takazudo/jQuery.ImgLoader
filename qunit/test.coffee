@@ -50,16 +50,16 @@ asyncTest 'fetchImg - basics', ->
   expect 4
   $.when(
     (ns.fetchImg 'imgs/1.jpg').done ($img) ->
-      equal($img.size(), 1, '1.jpg loaded')
+      equal($img.length, 1, '1.jpg loaded')
     ,
     (ns.fetchImg 'imgs/2.jpg').done ($img) ->
-      equal($img.size(), 1, '2.jpg loaded')
+      equal($img.length, 1, '2.jpg loaded')
     ,
     (ns.fetchImg 'imgs/3.jpg').done ($img) ->
-      equal($img.size(), 1, '3.jpg loaded')
+      equal($img.length, 1, '3.jpg loaded')
     ,
     (ns.fetchImg 'imgs/4.jpg').done ($img) ->
-      equal($img.size(), 1, '4.jpg loaded')
+      equal($img.length, 1, '4.jpg loaded')
   ).always ->
     wait().done(start) #qunit fails sometimes w/o wait
 
@@ -70,7 +70,7 @@ asyncTest 'fetchImg - error', ->
       ok false, 'img was not loaded but it saied ok'
     , ($img) ->
       ok true, 'deferred returned error'
-      equal $img.size(), 1, 'returned error img'
+      equal $img.length, 1, 'returned error img'
   ).always ->
     start()
     
@@ -136,44 +136,73 @@ asyncTest 'LoaderItem - event - error/complete', ->
 
 asyncTest 'BasicLoader - basics', ->
 
-  expect 22
   loader = new ns.BasicLoader
-  count = -1
+  lastProgressLoadedFileCount = 0
 
-  loader.bind 'itemload', ($img, i) ->
-    equal ($img.size()), 1, ($img.attr 'src') + ' was loaded'
-    equal i, (count+1), "counter #{i} was thrown"
-    count++
+  loader.one 'progress', (progressInfo) ->
+    p = progressInfo
+    equal p.totalFileCount, 10, "totalFileCount on progress: #{p.totalFileCount}"
 
-  loader.bind 'allload', ($imgs) ->
-    equal $imgs.size(), 10, 'all imgs loaded'
+  loader.bind 'progress', (progressInfo) ->
+    p = progressInfo
+    ok (0 <= p.loadedFileCount <= 10), "loadedFileCount on progress: #{p.loadedFileCount}"
+    lastProgressLoadedFileCount = p.loadedFileCount
+    if lastProgressLoadedFileCount < p.loadedFileCount
+      ok false, 'loaded count bugged'
+
+  loader.bind 'itemload', ($img, progressInfo) ->
+    p = progressInfo
+    equal ($img.length), 1, ($img.attr 'src') + ' was loaded'
+    lastProgressLoadedFileCount = p.loadedFileCount
+    if lastProgressLoadedFileCount < p.loadedFileCount
+      ok false, 'loaded count bugged'
+
+  loader.bind 'allload', ($imgs, progressInfo) ->
+    equal $imgs.length, 10, 'all imgs loaded'
+    equal progressInfo.loadedRatio, 1, 'loadedRatio 1 on allload'
 
   for i in [1..10]
-    loader.add (new ns.LoaderItem "imgs/#{i}.jpg")
+    loader.add ("imgs/#{i}.jpg?#{Math.random()}")
 
-  loader.load().always ($imgs) ->
-    equal $imgs.size(), 10, 'done deferred worked'
+  loader.load().always ($imgs, progressInfo) ->
+    equal $imgs.length, 10, 'done deferred worked'
     start()
 
-asyncTest 'BasicLoader - add - as string', ->
+asyncTest 'BasicLoader - no xhr2', ->
 
-  expect 22
-  loader = new ns.BasicLoader
-  count = -1
+  loader = new ns.BasicLoader false
+  lastProgressLoadedFileCount = 0
+  progressEventOccured = 0
 
-  loader.bind 'itemload', ($img, i) ->
-    equal ($img.size()), 1, ($img.attr 'src') + ' was loaded'
-    equal i, (count+1), "counter #{i} was thrown"
-    count++
+  loader.one 'progress', (progressInfo) ->
+    p = progressInfo
+    equal p.totalFileCount, 10, "totalFileCount on progress: #{p.totalFileCount}"
 
-  loader.bind 'allload', ($imgs) ->
-    equal $imgs.size(), 10, 'all imgs loaded'
+  loader.bind 'progress', (progressInfo) ->
+    p = progressInfo
+    ok (0 <= p.loadedFileCount <= 10), "loadedFileCount on progress: #{p.loadedFileCount}"
+    lastProgressLoadedFileCount = p.loadedFileCount
+    progressEventOccured += 1
+    if lastProgressLoadedFileCount < p.loadedFileCount
+      ok false, 'loaded count bugged'
+
+  loader.bind 'itemload', ($img, progressInfo) ->
+    p = progressInfo
+    equal ($img.length), 1, ($img.attr 'src') + ' was loaded'
+    lastProgressLoadedFileCount = p.loadedFileCount
+    if lastProgressLoadedFileCount < p.loadedFileCount
+      ok false, 'loaded count bugged'
+
+  loader.bind 'allload', ($imgs, progressInfo) ->
+    equal $imgs.length, 10, 'all imgs loaded'
+    equal progressInfo.loadedRatio, 1, 'loadedRatio 1 on allload'
 
   for i in [1..10]
-    loader.add "imgs/#{i}.jpg"
+    loader.add ("imgs/#{i}.jpg?#{Math.random()}")
 
-  loader.load().always ($imgs) ->
-    equal $imgs.size(), 10, 'done deferred worked'
+  loader.load().always ($imgs, progressInfo) ->
+    equal progressEventOccured, 11, 'how many times progress event occured'
+    equal $imgs.length, 10, 'done deferred worked'
     start()
 
 asyncTest 'BasicLoader - kill', ->
@@ -189,7 +218,7 @@ asyncTest 'BasicLoader - kill', ->
     ok false, 'allload fired'
 
   for i in [1..100]
-    loader.add (new ns.LoaderItem "imgs/#{i}.jpg")
+    loader.add "imgs/#{i}.jpg?#{Math.random()}"
 
   loader.bind 'kill', ->
     ok count<100, "#{count} items were loaded. loading was stopped."
@@ -202,46 +231,77 @@ asyncTest 'BasicLoader - kill', ->
 
   wait(100).done -> loader.kill()
 
-asyncTest 'ChainLoader', ->
+asyncTest 'ChainLoader - basics', ->
 
-  expect 22
   loader = new ns.ChainLoader 3
-  count = -1
+  lastProgressLoadedFileCount = 0
+  progressEventOccured = 0
 
-  loader.bind 'itemload', ($img, i) ->
-    equal ($img.size()), 1, ($img.attr 'src') + ' was loaded'
-    equal i, (count+1), "counter #{i} was thrown"
-    count++
+  loader.one 'progress', (progressInfo) ->
+    p = progressInfo
+    equal p.totalFileCount, 10, "totalFileCount on progress: #{p.totalFileCount}"
 
-  loader.bind 'allload', ($imgs) ->
-    equal $imgs.size(), 10, 'all imgs loaded'
+  loader.on 'progress', (progressInfo) ->
+    p = progressInfo
+    ok (0 <= p.loadedFileCount <= 10), "loadedFileCount on progress: #{p.loadedFileCount}"
+    lastProgressLoadedFileCount = p.loadedFileCount
+    progressEventOccured += 1
+    if lastProgressLoadedFileCount < p.loadedFileCount
+      ok false, 'loaded count bugged'
+
+  loader.on 'itemload', ($img, progressInfo) ->
+    p = progressInfo
+    equal ($img.length), 1, ($img.attr 'src') + ' was loaded'
+    lastProgressLoadedFileCount = p.loadedFileCount
+    if lastProgressLoadedFileCount < p.loadedFileCount
+      ok false, 'loaded count bugged'
+
+  loader.on 'allload', ($imgs, progressInfo) ->
+    equal $imgs.length, 10, 'all imgs loaded'
+    equal progressInfo.loadedRatio, 1, 'loadedRatio 1 on allload'
 
   for i in [1..10]
-    loader.add (new ns.LoaderItem "imgs/#{i}.jpg")
+    loader.add "imgs/#{i}.jpg?#{Math.random()}"
 
   loader.load().always ($imgs) ->
-    equal $imgs.size(), 10, 'done deferred worked'
+    equal $imgs.length, 10, 'done deferred worked'
     start()
 
-asyncTest 'ChainLoader - add - as string', ->
+asyncTest 'ChainLoader - no xhr2', ->
 
-  expect 22
-  loader = new ns.ChainLoader 3
-  count = -1
+  loader = new ns.ChainLoader 3, 0, false
+  lastProgressLoadedFileCount = 0
+  progressEventOccured = 0
 
-  loader.bind 'itemload', ($img, i) ->
-    equal ($img.size()), 1, ($img.attr 'src') + ' was loaded'
-    equal i, (count+1), "counter #{i} was thrown"
-    count++
+  loader.one 'progress', (progressInfo) ->
+    p = progressInfo
+    equal p.totalFileCount, 10, "totalFileCount on progress: #{p.totalFileCount}"
 
-  loader.bind 'allload', ($imgs) ->
-    equal $imgs.size(), 10, 'all imgs loaded'
+  loader.on 'progress', (progressInfo) ->
+    p = progressInfo
+    ok (0 <= p.loadedFileCount <= 10), "loadedFileCount on progress: #{p.loadedFileCount}"
+    lastProgressLoadedFileCount = p.loadedFileCount
+    progressEventOccured += 1
+    if lastProgressLoadedFileCount < p.loadedFileCount
+      ok false, 'loaded count bugged'
+
+  loader.on 'itemload', ($img, progressInfo) ->
+    p = progressInfo
+    equal ($img.length), 1, ($img.attr 'src') + ' was loaded'
+    lastProgressLoadedFileCount = p.loadedFileCount
+    if lastProgressLoadedFileCount < p.loadedFileCount
+      ok false, 'loaded count bugged'
+
+  loader.on 'allload', ($imgs, progressInfo) ->
+    equal $imgs.length, 10, 'all imgs loaded'
+    equal progressInfo.loadedRatio, 1, 'loadedRatio 1 on allload'
 
   for i in [1..10]
-    loader.add "imgs/#{i}.jpg"
+    loader.add "imgs/#{i}.jpg?#{Math.random()}"
 
   loader.load().always ($imgs) ->
-    equal $imgs.size(), 10, 'done deferred worked'
+    equal progressEventOccured, 11, 'how many times progress event occured'
+    equal $imgs.length, 10, 'done deferred worked'
     start()
 
 asyncTest 'ChainLoader - add - handles returned defer', ->
@@ -272,7 +332,7 @@ asyncTest 'ChainLoader - kill', ->
     ok false, 'allload fired'
 
   for i in [1..100]
-    loader.add (new ns.LoaderItem "imgs/#{i}.jpg")
+    loader.add "imgs/#{i}.jpg?#{Math.random()}"
 
   loader.bind 'kill', ->
     ok count<100, "#{count} items were loaded. loading was stopped."
@@ -296,46 +356,42 @@ test 'LoaderFacade - without new handling', ->
 
 asyncTest 'LoaderFacade - to BasicLoader', ->
 
-  expect 22
+  expect 12
 
   srcs = []
-  srcs.push "imgs/#{i}.jpg" for i in [1..10]
+  for i in [1..10]
+    srcs.push "imgs/#{i}.jpg?#{Math.random()}"
 
   loader = new $.ImgLoader(srcs: srcs)
-  count = -1
 
-  loader.bind 'itemload', ($img, i) ->
-    equal ($img.size()), 1, ($img.attr 'src') + ' was loaded'
-    equal i, (count+1), "counter #{i} was thrown"
-    count++
+  loader.bind 'itemload', ($img, p) ->
+    equal ($img.length), 1, ($img.attr 'src') + ' was loaded'
 
   loader.bind 'allload', ($imgs) ->
-    equal $imgs.size(), 10, 'all imgs loaded'
-
+    equal $imgs.length, 10, 'all imgs loaded'
+  
   loader.load().always ($imgs) ->
-    equal $imgs.size(), 10, 'done deferred worked'
+    equal $imgs.length, 10, 'done deferred worked'
     start()
 
 asyncTest 'LoaderFacade - to ChainLoader', ->
 
-  expect 22
+  expect 12
 
   srcs = []
-  srcs.push "imgs/#{i}.jpg" for i in [1..10]
+  for i in [1..10]
+    srcs.push "imgs/#{i}.jpg?#{Math.random()}"
 
   loader = new $.ImgLoader(srcs:srcs, pipesize: 5)
-  count = -1
 
   loader.bind 'itemload', ($img, i) ->
-    equal ($img.size()), 1, ($img.attr 'src') + ' was loaded'
-    equal i, (count+1), "counter #{i} was thrown"
-    count++
+    equal ($img.length), 1, ($img.attr 'src') + ' was loaded'
 
   loader.bind 'allload', ($imgs) ->
-    equal $imgs.size(), 10, 'all imgs loaded'
+    equal $imgs.length, 10, 'all imgs loaded'
 
   loader.load().always ($imgs) ->
-    equal $imgs.size(), 10, 'done deferred worked'
+    equal $imgs.length, 10, 'done deferred worked'
     start()
 
 asyncTest 'calcNaturalWH - ok', ->

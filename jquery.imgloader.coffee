@@ -1,6 +1,8 @@
 (($, win, doc) ->
 
   ns = $.ImgLoaderNs = {}
+  ns.support = {}
+  ns.support.xhr2 = win.XMLHttpRequestProgressEvent?
 
   # ============================================================
   # utility
@@ -10,30 +12,42 @@
 
   ns.createCachedFunction = (requestedFunction) ->
     cache = {}
-    (key) ->
+    (key, options) ->
       if(!cache[key])
         cache[key] = $.Deferred (defer) ->
-          requestedFunction defer, key
+          requestedFunction defer, key, options
         .promise()
       cache[key]
 
-  ns.fetchImg = ns.createCachedFunction (defer, src) ->
+  ns.fetchImg = ns.createCachedFunction (defer, src, options) ->
     img = new Image
     cleanUp = -> img.onload = img.onerror = null
     defer.always cleanUp
     $img = $(img)
     img.onload = -> defer.resolve $img
     img.onerror = -> defer.reject $img
-    img.src = src
+    if ns.support.xhr2 and options?.useXHR2
+      xhr = new ns.Xhr2Request src, { timeout: options.timeout }
+      defer.xhr = xhr
+      xhr.on 'progress', ->
+        defer.notify xhr.currentLoadedInfo()
+      xhr.on 'loadend', ->
+        img.src = src
+      xhr.send()
+    else
+      img.src = src
 
   do ->
     # 'loadImg' returns the load-completed img in stash.
     # then put cloned img into the stash back for future use.
     # it must be load-completed on the next time
     cache = {} # $img stash
-    ns.loadImg = (src) ->
+    ns.loadImg = (src, useXHR2, timeout) ->
       $.Deferred (defer) ->
-        (ns.fetchImg src).then ($img) ->
+        (ns.fetchImg src, { useXHR2: useXHR2, timeout: timeout })
+        .progress (loadedInfo) ->
+          defer.notify loadedInfo
+        .then ($img) ->
           if(!cache[src]) then cache[src] = $img
           $cachedImg = cache[src]
           $cloned = $cachedImg.clone()
@@ -57,7 +71,7 @@
     constructor: ->
       @_callbacks = {}
 
-    bind: (ev, callback) ->
+    on: (ev, callback) ->
       evs = ev.split(' ')
       for name in evs
         @_callbacks[name] or= []
@@ -65,8 +79,8 @@
       @
 
     one: (ev, callback) ->
-      @bind ev, ->
-        @unbind(ev, arguments.callee)
+      @on ev, ->
+        @off(ev, arguments.callee)
         callback.apply(@, arguments)
 
     trigger: (args...) ->
@@ -78,7 +92,7 @@
           break
       @
 
-    unbind: (ev, callback) ->
+    off: (ev, callback) ->
       unless ev
         @_callbacks = {}
         return @
@@ -97,16 +111,70 @@
         break
       @
 
+    bind: -> @on.apply @, arguments
+    unbind: -> @off.apply @, arguments
+
+  # ============================================================
+  # xhr2 wrapper class
+  
+  class ns.Xhr2Request extends ns.Event
+
+    constructor: (@url, options) ->
+      super
+      @options = $.extend
+        timeout: 10000
+      , options
+      @_prepare()
+
+    _prepare: ->
+
+      gotAnyProgress = false
+
+      @_request = new XMLHttpRequest
+      @_request.open('GET', @url)
+      @_request.timeout = @options.timeout
+
+      @_request.onloadend = =>
+        @trigger 'loadend'
+
+      @_request.onprogress = (e) =>
+        unless gotAnyProgress
+          gotAnyProgress = true
+          @totalSize = e.totalSize
+          @trigger 'firstprogress'
+        @loadedSize = e.loaded
+        @loadedRatio = @loadedSize / @totalSize
+        @trigger 'progress'
+
+      @_request.ontimeout = => @options.timeout
+      @
+
+    currentLoadedInfo: ->
+      {
+        totalSize: @totalSize
+        loadedSize: @loadedSize
+        loadedRatio: @loadedRatio
+      }
+
+    send: ->
+      @_request.send()
+      @
+
+
   # ============================================================
   # item class
 
   class ns.LoaderItem extends ns.Event
-    constructor: (@src) ->
+
+    constructor: (@src, @_useXHR2=true, @_timeout=10000) ->
       super
 
     load: ->
       $.Deferred (defer) =>
-        (ns.loadImg @src).pipe ($img) =>
+        (ns.loadImg @src, @_useXHR2, @_timeout)
+        .progress (loadedInfo) =>
+          @trigger 'progress', loadedInfo
+        .then ($img) =>
           @$img = $img
           @trigger 'success', @$img
           @trigger 'complete', @$img
@@ -116,90 +184,147 @@
           @trigger 'error', @$img
           @trigger 'complete', @$img
           defer.reject @$img
-      .promise()
 
   # ============================================================
   # item load organizers
-
-  class ns.BasicLoader extends ns.Event
+  
+  class ns.AbstractLoader extends ns.Event
+    
     constructor: ->
+      super
+
+    _prepareProgressInfo: ->
+      items = @items or @_presets
+      l = items.length
+      @progressInfo = p =
+        loadedFileCount: 0
+        totalFileCount: l
+        loadedRatio: 0
+      @ratioPerItem = 1 / l
+      @
+
+    _updateProgressInfo: (item, itemLoadedInfo) ->
+      p = @progressInfo
+      itemCurrentLoadedRatio = itemLoadedInfo.loadedRatio * @ratioPerItem
+      p.loadedRatio = p.loadedRatio + itemCurrentLoadedRatio - (item.lastLoadedRatio or 0)
+      if p.loadedRatio > 1
+        p.loadedRatio = 1
+      item.lastLoadedRatio = itemCurrentLoadedRatio
+      @
+
+  class ns.BasicLoader extends ns.AbstractLoader
+
+    constructor: (@_useXHR2 = true, @_timeout = 10000) ->
       super
       @items = []
 
     add: (loaderItem) ->
       if ($.type loaderItem) is 'string'
         src = loaderItem
-        loaderItem = new ns.LoaderItem src
+        loaderItem = new ns.LoaderItem src, @_useXHR2, @_timeout
       @items.push loaderItem
       loaderItem
 
     load: ->
-      count = 0
-      laodDeferreds = $.map @items, (item) =>
-        item.bind 'complete', ($img) =>
-          @trigger 'itemload', $img, count
-          count++
-        .load()
+
+      @_prepareProgressInfo()
+      p = @progressInfo
+
+      loadDeferreds = $.map @items, (item) =>
+
+        item.on 'progress', (loadedInfo) =>
+          @_updateProgressInfo item, loadedInfo
+          @trigger 'progress', p
+
+        item.on 'complete', ($img) =>
+          p.loadedFileCount += 1
+          unless ns.support.xhr2 and @_useXHR2
+            p.loadedRatio = p.loadedFileCount / p.totalFileCount
+            @trigger 'progress', p
+          @trigger 'itemload', $img, p
+
+        item.load()
+
       $.Deferred (defer) =>
-        ($.when.apply @, laodDeferreds).always (imgs...) =>
+        ($.when.apply @, loadDeferreds).always (imgs...) =>
           $imgs = $(imgs)
-          @trigger 'allload', $imgs
-          defer.resolve $imgs
+          p.loadedRatio = 1
+          @trigger 'progress', p 
+          @trigger 'allload', $imgs, p
+          defer.resolve $imgs, p
+      .promise()
 
     kill: ->
-      $.each @items, (i, item) ->
-        item.unbind()
+      for item in @items
+        item.off()
       @trigger 'kill'
-      @unbind()
+      @off()
       @
 
-  class ns.ChainLoader extends ns.Event
-    constructor: (@_pipesize, @_delay=0) ->
+  class ns.ChainLoader extends ns.AbstractLoader
+
+    constructor: (@_pipesize, @_delay=0, @_useXHR2, @_timeout) ->
       super
       @_presets = []
-      @_doneCount = 0
       @_inLoadCount = 0
       @_allDoneDefer = $.Deferred()
 
-    _finished: -> @_doneCount is @_presets.length
+    _finished: -> @progressInfo.loadedFileCount is @_presets.length
     _nextLoadAllowed: -> (@_inLoadCount < @_pipesize)
     _getImgs: ->
       $($.map @_presets, (preset) -> preset.item.$img)
 
     _handleNext: ->
+
+      p = @progressInfo
+
       if @_finished()
         if @_allloadFired then return @
         @_allloadFired = true
         $imgs = @_getImgs()
-        @trigger 'allload', $imgs
+        @trigger 'progress', p 
+        @trigger 'allload', $imgs, p
         @_allDoneDefer.resolve($imgs)
         return @
+
       $.each @_presets, (i, preset) =>
+        
+        item = preset.item
+
         if preset.started then return true
         if not @_nextLoadAllowed() then return false
-        @_inLoadCount++
+
+        @_inLoadCount += 1
         preset.started = true
-        preset.item.one 'complete', ($img) =>
+        
+        item.on 'progress', (loadedInfo) =>
+          @_updateProgressInfo item, loadedInfo
+          @trigger 'progress', p
+
+        item.on 'complete', ($img) =>
           preset.done = true
-          setTimeout =>
-            done = =>
-              @trigger 'itemload', $img, @_doneCount
-              @_inLoadCount--
-              @_doneCount++
-              preset.defer.resolve $img
-              @_handleNext()
-            if(i is 0)
-              done()
-            else
-              @_presets[i-1].defer.always -> done()
-          , @_delay
-        preset.item.load()
+          done = =>
+            p.loadedFileCount += 1
+            @_inLoadCount -= 1
+            unless ns.support.xhr2 and @_useXHR2
+              p.loadedRatio = p.loadedFileCount / p.totalFileCount
+              @trigger 'progress', p
+            @trigger 'itemload', $img, p
+            preset.defer.resolve $img
+            (wait @_delay).done => @_handleNext()
+          if(i is 0)
+            done()
+          else
+            # invoke done if previous item was complete
+            @_presets[i-1].defer.always -> done()
+
+        item.load()
       @
 
     add: (loaderItem) ->
       if ($.type loaderItem) is 'string'
         src = loaderItem
-        loaderItem = new ns.LoaderItem src
+        loaderItem = new ns.LoaderItem src, @_useXHR2, @_timeout
       preset =
         item:loaderItem
         done:false,
@@ -209,14 +334,15 @@
       preset.defer
 
     load: ->
+      @_prepareProgressInfo()
       @_handleNext()
       @_allDoneDefer
 
     kill: ->
-      $.each @_presets, (i, preset) ->
-        preset.item.unbind()
+      for preset in @_presets
+        preset.item.off()
       @trigger 'kill'
-      @unbind()
+      @off()
       @
 
   # ============================================================
@@ -225,9 +351,10 @@
   class ns.LoaderFacade
     
     # bind methods to loader
-    methods = [ 'bind', 'trigger', 'load', 'one', 'unbind', 'add', 'kill' ]
-    $.each methods, (i, method) =>
-      @::[method] = (args...) -> @loader[method].apply @loader, args
+    methods = [ 'bind', 'trigger', 'on', 'off', 'load', 'one', 'unbind', 'add', 'kill' ]
+    for method in methods
+      do (method) =>
+        @::[method] = (args...) -> @loader[method].apply @loader, args
 
     constructor: (options) ->
 
@@ -235,18 +362,20 @@
       if not (@ instanceof arguments.callee)
         return new ns.LoaderFacade(options)
 
-      @options = o = $.extend(
+      @options = o = $.extend
         srcs: []
         pipesize: 0
         delay: 100
-      , options)
+        timeout: 10000
+        useXHR2: true
+      , options
 
       if o.pipesize
-        @loader = new ns.ChainLoader o.pipesize, o.delay
+        @loader = new ns.ChainLoader o.pipesize, o.delay, o.useXHR2, o.timeout
       else
-        @loader = new ns.BasicLoader
-      $.each o.srcs, (i, src) =>
-        @loader.add new ns.LoaderItem src
+        @loader = new ns.BasicLoader o.useXHR2, o.timeout
+      for src in o.srcs
+        @loader.add src
 
   # ============================================================
   # calcNaturalWH
@@ -271,9 +400,9 @@
 
     naturalWHDetectable = (img) ->
       if(
-        (img.naturalWidth is undefined) or
+        (not img.naturalWidth?) or
         (img.naturalWidth is 0) or
-        (img.naturalHeight is undefined) or
+        (not img.naturalHeight?) or
         (img.naturalHeight is 0)
       )
         false

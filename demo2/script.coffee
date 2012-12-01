@@ -1,11 +1,12 @@
-$ ->
+unless window.console?
+  window.console = log: $.noop
 
-  loader = null
+$ ->
 
   $imgs = $('#imgs')
   $growl = $('#growl')
 
-  $form = $('form').bind 'submit', (e) ->
+  $form = $('form').on 'submit', (e) ->
     e.preventDefault()
     refresh()
 
@@ -32,6 +33,7 @@ $ ->
     msg = msg.replace(/\?.+/,'')
     $item = $("<div>#{msg}</div>")
     $item.prependTo($growl)
+    console.log msg
     cleanGrowl()
 
   randomSrcs = ->
@@ -42,8 +44,6 @@ $ ->
 
   refresh = ->
     
-    if loader then loader.kill()
-
     $imgs.empty()
     usechain = true if $usechain.filter(':checked').val() == 'yes'
     pipesize = $pipesize.val()*1
@@ -60,11 +60,15 @@ $ ->
 
     loader = $.ImgLoader options
 
-    loader.bind 'itemload', ($img) ->
+    loader.on 'progress', (progressInfo) ->
+      notify ("progress fired: #{Math.floor(progressInfo.loadedRatio * 100)}%")
+
+    loader.on 'itemload', ($img) ->
       $imgs.append $img
       notify ("itemload fired: #{$img.attr 'src'}")
       setTimeout (-> $img.css 'opacity', 1), 1
-    loader.bind 'allload', ->
+
+    loader.on 'allload', ->
       notify 'allload fired'
 
     loader.load()
