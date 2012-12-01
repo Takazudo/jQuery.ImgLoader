@@ -12,7 +12,7 @@
     var ns, wait;
     ns = $.ImgLoaderNs = {};
     ns.support = {};
-    ns.support.xhr2 = win.XMLHttpRequestProgressEvent != null;
+    ns.support.xhr2 = win.FormData != null;
     ns.createCachedFunction = function(requestedFunction) {
       var cache;
       cache = {};

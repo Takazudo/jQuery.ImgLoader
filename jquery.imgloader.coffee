@@ -2,7 +2,7 @@
 
   ns = $.ImgLoaderNs = {}
   ns.support = {}
-  ns.support.xhr2 = win.XMLHttpRequestProgressEvent?
+  ns.support.xhr2 = win.FormData? # from Modernizr
 
   # ============================================================
   # utility
