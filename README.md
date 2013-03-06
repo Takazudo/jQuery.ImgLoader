@@ -163,7 +163,7 @@ Licensed under the MIT license.
 This scirpt was developed with following things.  
 
  * [CoffeeScript][coffeescript]
- * [grunt][grunt]
+ * [Grunt][grunt]
 
 [coffeescript]: http://coffeescript.org/ "CoffeeScript"
-[grunt]: https://github.com/cowboy/grunt "grunt"
+[grunt]: http://gruntjs.com/ "grunt"
