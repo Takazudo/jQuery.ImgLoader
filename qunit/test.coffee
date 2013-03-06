@@ -345,15 +345,6 @@ asyncTest 'ChainLoader - kill', ->
 
   wait(100).done -> loader.kill()
 
-test 'LoaderFacade - without new handling', ->
-  srcs = [1,2,3,4]
-  do ->
-    loader = new $.ImgLoader(srcs: srcs)
-    ok loader instanceof $.ImgLoader, 'with new'
-  do ->
-    loader = $.ImgLoader(srcs: srcs)
-    ok loader instanceof $.ImgLoader, 'without new'
-
 asyncTest 'LoaderFacade - to BasicLoader', ->
 
   expect 12

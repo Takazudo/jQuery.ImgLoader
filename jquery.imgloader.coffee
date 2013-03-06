@@ -358,16 +358,12 @@
 
     constructor: (options) ->
 
-      # handle without new call
-      if not (@ instanceof arguments.callee)
-        return new ns.LoaderFacade(options)
-
       @options = o = $.extend
         srcs: []
         pipesize: 0
         delay: 100
         timeout: 10000
-        useXHR2: true
+        useXHR2: false
       , options
 
       if o.pipesize
