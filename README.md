@@ -37,7 +37,7 @@ You can bind 'progress'/'itemload'/'allload' event.
 'allload' event will be fired when all imgs were loaded.
 
 ```javascript
-var loader = $.ImgLoader({
+var loader = new $.ImgLoader({
   srcs: [ 'img1.jpg', 'img2.jpg', 'img3.jpg', 'img4.jpg' ],
   useXHR2: true, // use xhr2 if the browser supports it (optional) (default: true)
   timeout: 20000 // xhr2 timeout (optional) (default: 10000)
@@ -64,11 +64,11 @@ BasicLoader sometimes gets troubled when the number of imgs were huge. It's toug
 Just throw 'pipesize' and 'delay'(optional) to $.ImgLoader.
 
 ```javascript
-var loader = $.ImgLoader({
+var loader = new $.ImgLoader({
   srcs: [ 'img1.jpg', 'img2.jpg', 'img3.jpg', 'img4.jpg' ],
   pipesize: 2, // max connections (optional)
   delay: 100, // interval between each img loads (optional)
-  useXHR2: true, // use xhr2 if the browser supports it (optional) (default: true)
+  useXHR2: false, // use xhr2 if the browser supports it (optional) (default: false)
   timeout: 20000 // xhr2 timeout (optional) (default: 10000)
 });
 loader.on('progress', function(progressInfo){
@@ -92,7 +92,7 @@ You may want to handle each img's loading individually.
 Then, you can use 'add' method to register single loading task. It returns jQuery deferred about preload.
 
 ```javascript
-var loader = $.ImgLoader({ pipesize: 2, });
+var loader = new $.ImgLoader({ pipesize: 2, });
 
 loader.add('1.jpg').then(function($img){
   $('#somewhere').append($img);
@@ -113,7 +113,7 @@ loader.load();
 Call 'kill' if you want to stop loading tasks.
 
 ```javascript
-var loader = $.ImgLoader({
+var loader = new $.ImgLoader({
   srcs: [ 'img1.jpg', 'img2.jpg', 'img3.jpg', 'img4.jpg' ],
   pipesize: 2
 });
@@ -147,7 +147,7 @@ $.calcNaturalWH('../imgs/1.jpg').then(function(wh, $img){
 
 ## Depends
 
-jQuery 1.8.3
+jQuery 1.9.1
 
 ## Browsers
 

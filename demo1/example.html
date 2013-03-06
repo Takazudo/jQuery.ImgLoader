@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <title></title>
-<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.8.3/jquery.min.js"></script>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
 <script src="../jquery.imgloader.js"></script>
 <style>
 pre{
@@ -14,7 +14,7 @@ pre{
 </style>
 <script>
 function test1(){
-  var loader = $.ImgLoader({
+  var loader = new $.ImgLoader({
     srcs: [ '../imgs/1.jpg', '../imgs/2.jpg', '../imgs/3.jpg', '../imgs/4.jpg' ]
   });
   loader.bind('itemload', function($img){
@@ -26,7 +26,7 @@ function test1(){
   loader.load();
 }
 function test2(){
-  var loader = $.ImgLoader({
+  var loader = new $.ImgLoader({
     srcs: [ '../imgs/1.jpg', '../imgs/2.jpg', '../imgs/3.jpg', '../imgs/4.jpg' ],
     pipesize: 2,
     delay: 100 // optional
@@ -40,7 +40,7 @@ function test2(){
   loader.load();
 }
 function test3(){
-  var loader = $.ImgLoader({ pipesize: 2 });
+  var loader = new $.ImgLoader({ pipesize: 2 });
 
   loader.add('../imgs/1.jpg').then(function($img){
     $('#test3-imgs').append($img);
@@ -56,7 +56,7 @@ function test3(){
   loader.load();
 }
 function test4(){
-  var loader = $.ImgLoader({
+  var loader = new $.ImgLoader({
     srcs: [ '../imgs/1.jpg', '../imgs/2.jpg', '../imgs/3.jpg', '../imgs/4.jpg' ],
     pipesize: 2
   });
@@ -80,7 +80,7 @@ $(function(){
 <h1>$.ImgLoader</h1>
 <h2>test1()</h2>
 <button id="test1-run">run</button>
-<pre>var loader = $.ImgLoader({
+<pre>var loader = new $.ImgLoader({
   srcs: [ '../imgs/1.jpg', '../imgs/2.jpg', '../imgs/3.jpg', '../imgs/4.jpg' ]
 });
 loader.bind('itemload', function($img){
@@ -93,7 +93,7 @@ loader.load();</pre>
 <div id="test1-imgs"></div>
 <h2>test2()</h2>
 <button id="test2-run">run</button>
-<pre>var loader = $.ImgLoader({
+<pre>var loader = new $.ImgLoader({
   srcs: [ '../imgs/1.jpg', '../imgs/2.jpg', '../imgs/3.jpg', '../imgs/4.jpg' ],
   pipesize: 2,
   delay: 100 // optional
@@ -108,7 +108,7 @@ loader.load();</pre>
 <div id="test2-imgs"></div>
 <h2>test3()</h2>
 <button id="test3-run">run</button>
-<pre>var loader = $.ImgLoader({ pipesize: 2 });
+<pre>var loader = new $.ImgLoader({ pipesize: 2 });
 
 loader.add('../imgs/1.jpg').then(function($img){
   $('#test3-imgs').append($img);
@@ -125,7 +125,7 @@ loader.load();</pre>
 <div id="test3-imgs"></div>
 <h2>test4()</h2>
 <button id="test4-run">run</button>
-<pre>var loader = $.ImgLoader({
+<pre>var loader = new $.ImgLoader({
   srcs: [ '../imgs/1.jpg', '../imgs/2.jpg', '../imgs/3.jpg', '../imgs/4.jpg' ],
   pipesize: 2
 });

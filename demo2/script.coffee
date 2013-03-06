@@ -58,7 +58,7 @@ $ ->
 
     options.srcs = randomSrcs()
 
-    loader = $.ImgLoader options
+    loader = new $.ImgLoader options
 
     loader.on 'progress', (progressInfo) ->
       notify ("progress fired: #{Math.floor(progressInfo.loadedRatio * 1000)/10}%")

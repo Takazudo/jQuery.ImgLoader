@@ -358,10 +358,6 @@
 
     constructor: (options) ->
 
-      # handle without new call
-      if not (@ instanceof arguments.callee)
-        return new ns.LoaderFacade(options)
-
       @options = o = $.extend
         srcs: []
         pipesize: 0
