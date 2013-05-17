@@ -1,5 +1,9 @@
 # jQuery.ImgLoader - changelog
 
+## v.0.5.0
+
+* removed img width/height features from $.ImgLoader. These are now in [jQuery.imgUtil](https://github.com/Takazudo/jQuery.imgUtil).
+
 ## v.0.4.0
 
 * implemented `calcRectFitImgWH`
