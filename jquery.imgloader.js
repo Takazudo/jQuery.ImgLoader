@@ -1,6 +1,6 @@
 /*! jQuery.ImgLoader (https://github.com/Takazudo/jQuery.ImgLoader)
  * lastupdate: 2013-05-17
- * version: 0.3.0
+ * version: 0.4.0
  * author: Takeshi Takatsudo 'Takazudo' <takazudo@gmail.com>
  * License: MIT */
 (function() {
