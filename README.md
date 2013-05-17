@@ -130,23 +130,6 @@ loader.kill(); // stop all!
 Note: This 'kill' method is available for BasicLoader too.  
 But, BasicLoader starts imgs' loading at once. You can't stop already-started imgs' loadings to the browsers. 'kill' stops all future events about these imgs. But, preloadings, themselves cannnot be stopped. Use ChainLoader for huge amount of imgs.
 
-### $.calcNaturalWH - caliculate natural width / heigth
-
-$.calcNaturalWH caliculates img's natural width / height.  
-Newer browsers have naturalWidth/naturalHeight feature. With these, we can get the img's original width/height. But these features are sometimes difficult to handle because it fails and returns zero before the img was not load-completed.  
-$.calcNaturalWH preloads img as background task then returns the values you want.  
-This also works on old browsers which do not have naturalWidth/naturalHeight feature using tricky way.
-
-```javascript
-$.calcNaturalWH('../imgs/1.jpg').then(function(wh, $img){
-  alert(wh.width); // 320
-  alert(wh.height); // 320
-  $('#somewhere').append($img);
-}, function(){
-  alert('failed because of 404 or something');
-});
-```
-
 ## Depends
 
 jQuery 1.9.1
