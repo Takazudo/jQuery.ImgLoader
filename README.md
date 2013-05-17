@@ -6,6 +6,8 @@ Img elements are loaded progressively on the page. jQuery.ImgLoader loads imgs a
 
 You can also get img loading progress ratio using xhr2.
 
+Note: `$.calcNaturalWH` was moved to [jQuery.imgUtil](https://github.com/Takazudo/jQuery.imgUtil)
+
 ## demos
 
 * [http://takazudo.github.com/jQuery.ImgLoader/demo1/example.html](http://takazudo.github.com/jQuery.ImgLoader/demo1/example.html)
