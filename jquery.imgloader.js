@@ -1,5 +1,5 @@
 /*! jQuery.ImgLoader (https://github.com/Takazudo/jQuery.ImgLoader)
- * lastupdate: 2013-03-06
+ * lastupdate: 2013-05-17
  * version: 0.3.0
  * author: Takeshi Takatsudo 'Takazudo' <takazudo@gmail.com>
  * License: MIT */
@@ -611,9 +611,84 @@
         });
       });
     })();
+    ns.calcRectFitImgWH = (function() {
+      var bigger, calc, enlargeWh;
+      bigger = function(numA, numB) {
+        if (numA > numB) {
+          return numA;
+        }
+        return numB;
+      };
+      calc = function(origW, origH, rectW, rectH) {
+        var shrinkRateH, shrinkRateW;
+        if ((origW < rectW) && (origH < rectH)) {
+          return {
+            width: origW,
+            height: origH
+          };
+        }
+        shrinkRateW = rectW / origW;
+        shrinkRateH = rectH / origH;
+        if (shrinkRateW < shrinkRateH) {
+          return {
+            width: rectW,
+            height: Math.ceil(origH * shrinkRateW)
+          };
+        }
+        if (shrinkRateW > shrinkRateH) {
+          return {
+            width: Math.ceil(origW * shrinkRateH),
+            height: rectH
+          };
+        }
+        if (shrinkRateW === shrinkRateH) {
+          return {
+            width: origW * shrinkRateW,
+            height: origH * shrinkRateH
+          };
+        }
+      };
+      enlargeWh = function(wh) {
+        return {
+          width: wh.width * 100,
+          height: wh.height * 100
+        };
+      };
+      return function(imgsrc, options) {
+        var defer, fail, o, success;
+        o = $.extend({
+          width: null,
+          height: null,
+          enlargeSmallImg: true,
+          returnClonedImg: true
+        }, options);
+        defer = $.Deferred();
+        success = function(origWh, $img) {
+          var res;
+          if (o.enlargeSmallImg) {
+            origWh = enlargeWh(origWh);
+          }
+          if (o.returnClonedImg) {
+            $img = $img.clone();
+          }
+          res = calc(origWh.width, origWh.height, o.width, o.height);
+          return defer.resolve({
+            width: res.width,
+            height: res.height,
+            img: $img
+          });
+        };
+        fail = function() {
+          return defer.reject();
+        };
+        ns.calcNaturalWH(imgsrc).then(success, fail);
+        return defer.promise();
+      };
+    })();
     $.loadImg = ns.loadImg;
     $.ImgLoader = ns.LoaderFacade;
-    return $.calcNaturalWH = ns.calcNaturalWH;
+    $.calcNaturalWH = ns.calcNaturalWH;
+    return $.calcRectFitImgWH = ns.calcRectFitImgWH;
   })(jQuery, this, this.document);
 
 }).call(this);

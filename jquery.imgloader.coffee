@@ -462,10 +462,84 @@
         defer.reject()
 
   # ============================================================
+  # calcRectFitImgWH
+  
+  ns.calcRectFitImgWH = do ->
+
+    bigger = (numA, numB) ->
+      return numA  if numA > numB
+      numB
+
+    calc = (origW, origH, rectW, rectH) ->
+
+      if (origW < rectW) and (origH < rectH)
+        return {
+          width: origW
+          height: origH
+        }
+
+      shrinkRateW = rectW / origW
+      shrinkRateH = rectH / origH
+
+      if shrinkRateW < shrinkRateH
+        return {
+          width: rectW
+          height: Math.ceil(origH * shrinkRateW)
+        }
+
+      if shrinkRateW > shrinkRateH
+        return {
+          width: Math.ceil(origW * shrinkRateH)
+          height: rectH
+        }
+
+      if shrinkRateW is shrinkRateH
+        return {
+          width: origW * shrinkRateW
+          height: origH * shrinkRateH
+        }
+
+    enlargeWh = (wh) ->
+      return {
+        width: wh.width * 100
+        height: wh.height * 100
+      }
+
+    return (imgsrc, options) ->
+
+      o = $.extend
+        width: null
+        height: null
+        enlargeSmallImg: true # allow bigger value than original size or not
+        returnClonedImg: true
+      , options
+
+      defer = $.Deferred()
+
+      success = (origWh, $img) ->
+        if o.enlargeSmallImg
+          origWh = enlargeWh(origWh)
+        if o.returnClonedImg
+          $img = $img.clone()
+        res = calc(origWh.width, origWh.height, o.width, o.height)
+        defer.resolve
+          width: res.width
+          height: res.height
+          img: $img
+
+      fail = ->
+        defer.reject()
+
+      ns.calcNaturalWH(imgsrc).then success, fail
+
+      return defer.promise()
+
+  # ============================================================
   # globalify
 
   $.loadImg = ns.loadImg
   $.ImgLoader = ns.LoaderFacade
   $.calcNaturalWH = ns.calcNaturalWH
+  $.calcRectFitImgWH = ns.calcRectFitImgWH
 
 ) jQuery, @, @document
