@@ -1,5 +1,9 @@
 # jQuery.ImgLoader - changelog
 
+## v.0.4.0
+
+* implemented `calcRectFitImgWH`
+
 ## v.0.3.0
 
 * updated build.
