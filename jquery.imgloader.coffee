@@ -57,6 +57,18 @@
           defer.reject $img
       .promise()
 
+  # load img, with no-cache
+  ns.loadImgWoCache = (src, useXHR2, timeout) ->
+    $.Deferred (defer) ->
+      (ns.fetchImg src, { useXHR2: useXHR2, timeout: timeout })
+      .progress (loadedInfo) ->
+        defer.notify loadedInfo
+      .then ($img) ->
+        defer.resolve $img
+      , ($img) ->
+        defer.reject $img
+    .promise()
+
   # setTimeout wrapper
   wait = (time) ->
     $.Deferred (defer) ->
@@ -377,6 +389,7 @@
   # globalify
 
   $.loadImg = ns.loadImg
+  $.loadImgWoCache = ns.loadImgWoCache
   $.ImgLoader = ns.LoaderFacade
   $.calcNaturalWH = ns.calcNaturalWH
   $.calcRectFitImgWH = ns.calcRectFitImgWH

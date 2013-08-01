@@ -1,5 +1,5 @@
 /*! jQuery.ImgLoader (https://github.com/Takazudo/jQuery.ImgLoader)
- * lastupdate: 2013-05-17
+ * lastupdate: 2013-08-01
  * version: 0.5.0
  * author: Takeshi Takatsudo 'Takazudo' <takazudo@gmail.com>
  * License: MIT */
@@ -80,6 +80,20 @@
         }).promise();
       };
     })();
+    ns.loadImgWoCache = function(src, useXHR2, timeout) {
+      return $.Deferred(function(defer) {
+        return (ns.fetchImg(src, {
+          useXHR2: useXHR2,
+          timeout: timeout
+        })).progress(function(loadedInfo) {
+          return defer.notify(loadedInfo);
+        }).then(function($img) {
+          return defer.resolve($img);
+        }, function($img) {
+          return defer.reject($img);
+        });
+      }).promise();
+    };
     wait = function(time) {
       return $.Deferred(function(defer) {
         return setTimeout(function() {
@@ -527,6 +541,7 @@
 
     }).call(this);
     $.loadImg = ns.loadImg;
+    $.loadImgWoCache = ns.loadImgWoCache;
     $.ImgLoader = ns.LoaderFacade;
     $.calcNaturalWH = ns.calcNaturalWH;
     return $.calcRectFitImgWH = ns.calcRectFitImgWH;
